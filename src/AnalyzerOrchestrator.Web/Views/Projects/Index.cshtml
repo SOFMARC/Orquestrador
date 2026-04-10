@@ -1,0 +1,77 @@
+@model IEnumerable<AnalyzerOrchestrator.Application.DTOs.Projects.ProjectDto>
+@{
+    ViewData["Title"] = "Projetos";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Projetos</h2>
+    <a asp-action="Create" class="btn btn-primary">+ Novo Projeto</a>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @success
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        Nenhum projeto cadastrado ainda.
+        <a asp-action="Create">Cadastre o primeiro projeto.</a>
+    </div>
+}
+else
+{
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Nome</th>
+                <th>Stack</th>
+                <th>Runs</th>
+                <th>Status</th>
+                <th>Criado em</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var project in Model)
+            {
+                <tr>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@project.Id" class="fw-semibold text-decoration-none">
+                            @project.Name
+                        </a>
+                        @if (!string.IsNullOrEmpty(project.Description))
+                        {
+                            <br /><small class="text-muted">@project.Description</small>
+                        }
+                    </td>
+                    <td><small>@(project.TechnologyStack ?? "—")</small></td>
+                    <td>
+                        <a asp-controller="PipelineRuns" asp-action="ByProject" asp-route-projectId="@project.Id">
+                            @project.TotalRuns runs
+                        </a>
+                    </td>
+                    <td>
+                        @if (project.IsActive)
+                        {
+                            <span class="badge bg-success">Ativo</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inativo</span>
+                        }
+                    </td>
+                    <td><small>@project.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</small></td>
+                    <td class="text-end">
+                        <a asp-action="Details" asp-route-id="@project.Id" class="btn btn-sm btn-outline-primary">Detalhes</a>
+                        <a asp-action="Edit" asp-route-id="@project.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

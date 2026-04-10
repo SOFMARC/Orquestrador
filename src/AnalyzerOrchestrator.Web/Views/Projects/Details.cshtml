@@ -1,0 +1,95 @@
+@model AnalyzerOrchestrator.Application.DTOs.Projects.ProjectDto
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
+        <li class="breadcrumb-item active">@Model.Name</li>
+    </ol>
+</nav>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @success
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2>@Model.Name</h2>
+        @if (Model.IsActive)
+        {
+            <span class="badge bg-success">Ativo</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">Inativo</span>
+        }
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Editar</a>
+        <a asp-controller="PipelineRuns" asp-action="Create" asp-route-projectId="@Model.Id" class="btn btn-primary">
+            + Novo Run
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Informações do Projeto</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Descrição</dt>
+                    <dd class="col-sm-8">@(Model.Description ?? "—")</dd>
+
+                    <dt class="col-sm-4">Repositório</dt>
+                    <dd class="col-sm-8"><code>@(Model.RepositoryPath ?? "—")</code></dd>
+
+                    <dt class="col-sm-4">Stack</dt>
+                    <dd class="col-sm-8">@(Model.TechnologyStack ?? "—")</dd>
+
+                    <dt class="col-sm-4">Criado em</dt>
+                    <dd class="col-sm-8">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Resumo</div>
+            <div class="card-body text-center">
+                <h3 class="display-6">@Model.TotalRuns</h3>
+                <p class="text-muted mb-0">Pipeline Runs</p>
+                <a asp-controller="PipelineRuns" asp-action="ByProject" asp-route-projectId="@Model.Id"
+                   class="btn btn-sm btn-outline-primary mt-2">Ver todos os runs</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h5>Últimos Runs</h5>
+    <a asp-controller="PipelineRuns" asp-action="ByProject" asp-route-projectId="@Model.Id"
+       class="btn btn-sm btn-outline-secondary">Ver todos</a>
+</div>
+
+@if (Model.TotalRuns == 0)
+{
+    <div class="alert alert-light border">
+        Nenhum run criado para este projeto ainda.
+        <a asp-controller="PipelineRuns" asp-action="Create" asp-route-projectId="@Model.Id">Criar o primeiro run.</a>
+    </div>
+}
+
+<div class="mt-4">
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post"
+          onsubmit="return confirm('Tem certeza que deseja remover este projeto e todos os seus dados?')">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-sm btn-outline-danger">Remover Projeto</button>
+    </form>
+</div>
