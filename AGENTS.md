@@ -1,78 +1,160 @@
-# Regras e Habilidades para Agentes de IA no Projeto Mercado Livre
+# AGENTS.md — Analyzer Orchestrator
 
-Este documento define as regras de operação e as habilidades técnicas esperadas de qualquer agente de IA que atue neste repositório. O objetivo é garantir a qualidade, a estabilidade e a consistência arquitetural do projeto.
-
-## Estrutura Real do Repositório
-
-O repositório contém uma solução principal em .NET 9 (`net9.0`) 
-
-
-**Atenção:** Atualmente, **não existem projetos de teste** neste repositório.
-
-## Regras de Operação
-
-Antes de finalizar qualquer tarefa, o agente deve obrigatoriamente validar se a solução compila sem erros.
-
-### Fluxo de Validação de Build (.NET 9)
-
-A solução principal está localizada na pasta `Orquestrador`. Para validar o build, siga esta ordem de execução:
-
-1. **Navegar para a pasta da solução:**
-   ```bash
-   cd Orquestrador
-   ```
-
-2. **Restaurar dependências:**
-   ```bash
-   dotnet restore AnalyzerOrchestrator.sln
-   ```
-
-3. **Compilar a solução:**
-   ```bash
-   dotnet build AnalyzerOrchestrator.sln -c Debug
-   ```
-
-### Tratamento de Falhas de Build
-
-Se o build falhar, o agente deve:
-1. Analisar os erros apresentados no log de compilação.
-2. Corrigir os erros no código ou nos arquivos de projeto (`.csproj`).
-3. Rodar o build novamente.
-4. Repetir este ciclo até que o build termine sem erros.
-
-**Atenção:** Só considere a tarefa concluída quando o build terminar sem erros.
-
-### Diretrizes de Modificação de Código
-
-- **Mudanças Mínimas:** Faça mudanças mínimas e seguras, sem alterar partes não relacionadas ao escopo da tarefa.
-- **Preservação Arquitetural:** Ao implementar correções ou novas funcionalidades, preserve o padrão arquitetural já existente no projeto (Domain -> Application -> Infrastructure -> Web).
-- **Transparência:** Sempre explique no final o que foi alterado e quais comandos foram executados para validar as mudanças.
-- **Correção Guiada por Validação:** Utilize sempre os erros de build como fonte de verdade para orientar as correções.
+Este documento descreve o estado atual do projeto, as decisões arquiteturais tomadas e as regras de operação para qualquer agente de IA que atue neste repositório.
 
 ---
 
-## Habilidades Técnicas Documentadas
+## Estado do Projeto
 
-O agente deve demonstrar as seguintes capacidades técnicas ao atuar neste repositório:
+**Etapa 1 — Fundação:** ✅ Concluída  
+**Etapa 2 — Extração Estrutural:** ✅ Concluída  
+**Etapa 3 em diante:** Pendente
 
-### 1. Compreensão da Estrutura da Solução
-- Entender a estrutura da solução e identificar o projeto correto dentro do repositório.
-- Identificar o projeto de inicialização (`Orquestrador`) e a solução correta (`AnalyzerOrchestrator.sln`).
+### O que existe hoje
 
-### 2. Validação como Fonte de Verdade
-- Compilar a solução como fonte de verdade da validação.
-- Utilizar erros de compilação como base principal para diagnóstico e correção.
+O sistema é uma aplicação **ASP.NET Core MVC (.NET 9)** com banco **SQLite** e arquitetura em 4 camadas:
 
-### 3. Resolução de Problemas de Compilação
-- Corrigir erros de compilação em projetos .NET 9.
-- Ajustar referências, namespaces, diretivas `using`, assinaturas de métodos e dependências quebradas.
-- Rodar novamente o build após cada correção até eliminar todos os erros.
-
-### 4. Disciplina de Código
-- Respeitar a arquitetura existente (Domain, Application, Infrastructure, Web).
-- Evitar mudanças desnecessárias fora do escopo da tarefa.
-- Não ignorar falhas de build para encerrar a tarefa.
+```
+src/
+├── AnalyzerOrchestrator.Domain/          # Entidades e enums
+├── AnalyzerOrchestrator.Application/     # DTOs, interfaces, serviços, workflow
+├── AnalyzerOrchestrator.Infrastructure/  # EF Core, repositórios, varredura de disco
+└── AnalyzerOrchestrator.Web/             # Controllers MVC, Views Razor
+```
 
 ---
 
-*Este arquivo serve como um guia de comportamento para agentes autônomos e deve ser consultado antes do início de qualquer modificação no código-fonte.*
+## Entidades do Domínio
+
+| Entidade | Descrição |
+|----------|-----------|
+| `Project` | Projeto cadastrado. Contém `Name`, `RepositoryPath`, `TechnologyStack`, `IsActive` e configurações de scan via `ProjectScanSettings`. |
+| `ProjectScanSettings` | Configurações de leitura por projeto: extensões permitidas, pastas ignoradas, limite de tamanho, ignorar binários. Relação 1:1 com `Project`. |
+| `PipelineRun` | Execução de pipeline. Status: `Pending → Running → Completed/Failed/Cancelled`. |
+| `PipelineStepExecution` | Etapa individual de uma run. Agora possui `ReviewStatus` e campos de revisão humana (`ReviewedAt`, `ReviewedBy`, `ReviewNotes`). |
+| `ScannedFile` | Arquivo descoberto durante varredura. Armazena caminho, extensão, tamanho, classificação (`FileRole`) e flag de relevância. |
+| `Artifact` | Artefato gerado por uma run. Tipos: `FileInventory`, `StructureTree`, `RelevantFilesList`, `ExecutionSummary`, etc. |
+
+### Enums
+
+| Enum | Valores |
+|------|---------|
+| `RunStatus` | `Pending, Running, Completed, Failed, Cancelled` |
+| `StepStatus` | `Pending, Running, Executed, AwaitingReview, Approved, Rejected, Failed, Skipped` |
+| `ReviewStatus` | `NotApplicable, AwaitingReview, Approved, Rejected` |
+| `ArtifactType` | `Unknown, FileInventory, StructureTree, RelevantFilesList, ExecutionSummary, ContextDocument, StructureMap, AnalysisReport, Other` |
+| `FileRole` | `Controller, Service, Repository, Domain, Entity, DTO, View, Config, SQL, Script, Other` |
+
+---
+
+## Workflow Padrão (5 etapas)
+
+| # | Nome | Descrição |
+|---|------|-----------|
+| 1 | Extração Estrutural | Varredura do diretório, inventário, árvore, classificação e arquivos relevantes |
+| 2 | Mapeamento de Estrutura | Identificação de módulos, camadas e componentes |
+| 3 | Análise de Dependências | Pacotes, integrações e dependências externas |
+| 4 | Análise de Banco de Dados | Tabelas, relacionamentos e convenções (opcional) |
+| 5 | Preparação do Contexto | Consolidação para uso com IA |
+
+A **Etapa 1 (Extração Estrutural)** é a única implementada com execução real. As demais estão como `Pending` aguardando implementação futura.
+
+---
+
+## Serviços Implementados
+
+| Serviço | Interface | Responsabilidade |
+|---------|-----------|-----------------|
+| `ProjectService` | `IProjectService` | CRUD de projetos |
+| `PipelineRunService` | `IPipelineRunService` | Criar, listar, detalhar, cancelar runs |
+| `StructuralExtractionService` | `IStructuralExtractionService` | Executar varredura, classificar arquivos, gerar artefatos |
+| `FileClassifierService` | `IFileClassifierService` | Classificar arquivo por nome/pasta/extensão → `FileRole` |
+
+---
+
+## Persistência em Disco
+
+Artefatos são salvos em:
+
+```
+workspace/
+└── {ProjectName}/
+    └── runs/
+        └── run_{RunId}/
+            └── step_1/
+                ├── inventory.json
+                ├── tree.txt
+                ├── relevant-files.json
+                └── summary.md
+```
+
+A pasta `workspace/` fica dentro do diretório de trabalho da aplicação Web.
+
+---
+
+## Migrations
+
+| Migration | Descrição |
+|-----------|-----------|
+| `20260410195506_InitialCreate` | Schema inicial: Projects, PipelineRuns, PipelineStepExecutions, Artifacts |
+| `AddStep2Entities` | Adiciona: `ProjectScanSettings`, `ScannedFiles`, colunas de revisão em `PipelineStepExecutions`, novos valores de enum |
+
+---
+
+## Regras de Operação para Agentes
+
+### Antes de qualquer modificação
+
+1. Fazer `git pull origin main` para garantir código atualizado.
+2. Ler este arquivo por completo.
+3. Verificar o build atual: `dotnet build AnalyzerOrchestrator.sln -c Release`.
+
+### Fluxo de Build
+
+```bash
+cd /path/to/Orquestrador
+dotnet restore AnalyzerOrchestrator.sln
+dotnet build AnalyzerOrchestrator.sln -c Release -warnaserror
+```
+
+### Após modificações com mudança de schema
+
+```bash
+dotnet ef migrations add <NomeDaMigration> \
+  --project src/AnalyzerOrchestrator.Infrastructure \
+  --startup-project src/AnalyzerOrchestrator.Web \
+  --output-dir Persistence/Migrations
+```
+
+### Critério de entrega
+
+- Build `Release` sem erros e sem warnings.
+- Migrations aplicadas e consistentes com as entidades.
+- Commits coerentes por camada.
+
+---
+
+## Diretrizes Arquiteturais
+
+- **Domain** nunca referencia Application, Infrastructure ou Web.
+- **Application** nunca referencia Infrastructure ou Web. Usa apenas interfaces.
+- **Infrastructure** implementa as interfaces da Application. Pode referenciar Domain e Application.
+- **Web** orquestra tudo via DI. Usa DTOs da Application, nunca entidades do Domain diretamente.
+- **Mapeamento** é manual (sem AutoMapper). Feito nos serviços da Application.
+- **Logging** fica na Infrastructure, não nos serviços da Application.
+- **Novos serviços** devem ter interface na Application e implementação na Infrastructure ou Application conforme a responsabilidade.
+
+---
+
+## O que NÃO fazer
+
+- Não integrar com IA ainda (etapas futuras).
+- Não implementar análise profunda de SQL ou tabelas (etapa futura).
+- Não implementar mapa de impacto (etapa futura).
+- Não remover funcionalidades da Etapa 1.
+- Não trocar SQLite por outro banco sem necessidade explícita.
+- Não trocar a arquitetura em camadas.
+
+---
+
+*Atualizado após conclusão da Etapa 2 — Extração Estrutural.*
