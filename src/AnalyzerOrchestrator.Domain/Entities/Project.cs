@@ -10,4 +10,5 @@ public class Project : BaseEntity
 
     // Navegação
     public ICollection<PipelineRun> PipelineRuns { get; set; } = new List<PipelineRun>();
+    public ProjectScanSettings? ScanSettings { get; set; }
 }
