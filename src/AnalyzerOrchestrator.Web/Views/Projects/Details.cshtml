@@ -30,10 +30,17 @@
             <span class="badge bg-secondary">Inativo</span>
         }
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Editar</a>
-        <a asp-controller="PipelineRuns" asp-action="Create" asp-route-projectId="@Model.Id" class="btn btn-primary">
-            + Novo Run
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-controller="ScanSettings" asp-action="Edit" asp-route-id="@Model.Id"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-gear me-1"></i>Configurar Leitura
+        </a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil me-1"></i>Editar
+        </a>
+        <a asp-controller="PipelineRuns" asp-action="Create" asp-route-projectId="@Model.Id"
+           class="btn btn-primary">
+            <i class="bi bi-play-fill me-1"></i>Novo Run
         </a>
     </div>
 </div>
@@ -90,6 +97,8 @@
     <form asp-action="Delete" asp-route-id="@Model.Id" method="post"
           onsubmit="return confirm('Tem certeza que deseja remover este projeto e todos os seus dados?')">
         @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-sm btn-outline-danger">Remover Projeto</button>
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash me-1"></i>Remover Projeto
+        </button>
     </form>
 </div>

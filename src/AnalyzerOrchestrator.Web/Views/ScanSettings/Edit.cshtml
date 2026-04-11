@@ -1,0 +1,87 @@
+@model AnalyzerOrchestrator.Application.DTOs.Projects.SaveScanSettingsDto
+@{
+    ViewData["Title"] = "Configurações de Leitura";
+    var projectId = ViewBag.ProjectId as int? ?? Model.ProjectId;
+    var projectName = ViewBag.ProjectName as string ?? "Projeto";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Details" asp-route-id="@projectId">@projectName</a></li>
+        <li class="breadcrumb-item active">Configurações de Leitura</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-gear-fill me-2"></i>Configurações de Leitura</h2>
+    <span class="text-muted">@projectName</span>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="Edit" asp-route-id="@projectId" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="ProjectId" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="ScanRootPath" class="form-label fw-semibold">
+                    Pasta Raiz de Scan
+                    <small class="text-muted fw-normal">(deixe vazio para usar o caminho do repositório)</small>
+                </label>
+                <input asp-for="ScanRootPath" class="form-control font-monospace"
+                       placeholder="Ex: C:\MeuProjeto\src" />
+                <span asp-validation-for="ScanRootPath" class="text-danger small"></span>
+                <div class="form-text">Caminho absoluto da pasta a ser varrida. Se vazio, usa o caminho configurado no projeto.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="AllowedExtensions" class="form-label fw-semibold">Extensões Permitidas</label>
+                <input asp-for="AllowedExtensions" class="form-control font-monospace"
+                       placeholder=".cs,.sql,.json,.cshtml" />
+                <span asp-validation-for="AllowedExtensions" class="text-danger small"></span>
+                <div class="form-text">Separadas por vírgula. Apenas arquivos com essas extensões serão incluídos.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="IgnoredFolders" class="form-label fw-semibold">Pastas Ignoradas</label>
+                <input asp-for="IgnoredFolders" class="form-control font-monospace"
+                       placeholder="bin,obj,.git,node_modules" />
+                <span asp-validation-for="IgnoredFolders" class="text-danger small"></span>
+                <div class="form-text">Nomes de pastas separados por vírgula. Subpastas com esses nomes são ignoradas.</div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label asp-for="MaxFileSizeKb" class="form-label fw-semibold">Tamanho Máximo por Arquivo (KB)</label>
+                    <input asp-for="MaxFileSizeKb" class="form-control" type="number" min="1" max="102400"
+                           placeholder="500" />
+                    <span asp-validation-for="MaxFileSizeKb" class="text-danger small"></span>
+                    <div class="form-text">Deixe vazio para sem limite.</div>
+                </div>
+                <div class="col-md-8 d-flex align-items-end pb-1">
+                    <div class="form-check">
+                        <input asp-for="IgnoreBinaryFiles" class="form-check-input" type="checkbox" />
+                        <label asp-for="IgnoreBinaryFiles" class="form-check-label fw-semibold">
+                            Ignorar arquivos binários automaticamente
+                        </label>
+                        <div class="form-text">Ignora .exe, .dll, .png, .zip, .db, etc.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-1"></i> Salvar Configurações
+                </button>
+                <a asp-controller="Projects" asp-action="Details" asp-route-id="@projectId"
+                   class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

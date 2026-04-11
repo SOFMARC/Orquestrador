@@ -1,3 +1,4 @@
+@using AnalyzerOrchestrator.Domain.Enums
 @model AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineRunDto
 @{
     ViewData["Title"] = $"Run #{Model.Id}";
@@ -30,6 +31,13 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @error
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
@@ -39,10 +47,10 @@
     @{
         var badgeClass = Model.Status switch
         {
-            AnalyzerOrchestrator.Domain.Enums.RunStatus.Completed => "bg-success",
-            AnalyzerOrchestrator.Domain.Enums.RunStatus.Running => "bg-primary",
-            AnalyzerOrchestrator.Domain.Enums.RunStatus.Failed => "bg-danger",
-            AnalyzerOrchestrator.Domain.Enums.RunStatus.Cancelled => "bg-secondary",
+            RunStatus.Completed => "bg-success",
+            RunStatus.Running => "bg-primary",
+            RunStatus.Failed => "bg-danger",
+            RunStatus.Cancelled => "bg-secondary",
             _ => "bg-warning text-dark"
         };
     }
@@ -108,11 +116,14 @@ else
         {
             var stepBadge = step.Status switch
             {
-                AnalyzerOrchestrator.Domain.Enums.StepStatus.Completed => "bg-success",
-                AnalyzerOrchestrator.Domain.Enums.StepStatus.Running => "bg-primary",
-                AnalyzerOrchestrator.Domain.Enums.StepStatus.Failed => "bg-danger",
-                AnalyzerOrchestrator.Domain.Enums.StepStatus.Skipped => "bg-secondary",
-                _ => "bg-warning text-dark"
+                StepStatus.Completed or StepStatus.Approved => "bg-success",
+                StepStatus.Running => "bg-primary",
+                StepStatus.Failed => "bg-danger",
+                StepStatus.Skipped => "bg-secondary",
+                StepStatus.Rejected => "bg-danger",
+                StepStatus.AwaitingReview => "bg-warning text-dark",
+                StepStatus.Executed => "bg-info",
+                _ => "bg-light text-dark border"
             };
             <div class="list-group-item">
                 <div class="d-flex justify-content-between align-items-center">
@@ -120,8 +131,42 @@ else
                         <span class="badge bg-light text-dark border me-2">@step.StepNumber</span>
                         <strong>@step.StepName</strong>
                     </div>
-                    <span class="badge @stepBadge">@step.StatusLabel</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge @stepBadge">@step.StatusLabel</span>
+
+                        @* Botão de ação para Etapa 1 *@
+                        @if (step.StepNumber == 1)
+                        {
+                            if (step.CanBeExecuted)
+                            {
+                                <a asp-controller="Extraction" asp-action="Execute" asp-route-id="@Model.Id"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="bi bi-play-fill me-1"></i>Executar
+                                </a>
+                            }
+                            else if (step.CanBeReviewed)
+                            {
+                                <a asp-controller="Extraction" asp-action="Review"
+                                   asp-route-id="@step.Id" asp-route-runId="@Model.Id"
+                                   class="btn btn-sm btn-warning">
+                                    <i class="bi bi-clipboard-check me-1"></i>Revisar
+                                </a>
+                                <a asp-controller="Extraction" asp-action="Result" asp-route-id="@Model.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye me-1"></i>Ver Resultado
+                                </a>
+                            }
+                            else if (step.IsExecuted)
+                            {
+                                <a asp-controller="Extraction" asp-action="Result" asp-route-id="@Model.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye me-1"></i>Ver Resultado
+                                </a>
+                            }
+                        }
+                    </div>
                 </div>
+
                 @if (!string.IsNullOrEmpty(step.Notes))
                 {
                     <small class="text-muted d-block mt-1">@step.Notes</small>
@@ -130,6 +175,33 @@ else
                 {
                     <small class="text-danger d-block mt-1"><strong>Erro:</strong> @step.ErrorMessage</small>
                 }
+
+                @* Métricas de execução *@
+                @if (step.FilesFound.HasValue)
+                {
+                    <small class="text-muted d-block mt-1">
+                        <i class="bi bi-files me-1"></i>
+                        @step.FilesFound encontrados · @step.FilesIgnored ignorados
+                        @if (step.ErrorCount > 0)
+                        {
+                            <span class="text-danger ms-2">· @step.ErrorCount erros</span>
+                        }
+                    </small>
+                }
+
+                @* Revisão *@
+                @if (step.ReviewedAt.HasValue)
+                {
+                    <small class="text-muted d-block mt-1">
+                        <i class="bi bi-person-check me-1"></i>
+                        Revisado por @(step.ReviewedBy ?? "anônimo") em @step.ReviewedAt.Value.ToLocalTime().ToString("dd/MM HH:mm")
+                        @if (!string.IsNullOrWhiteSpace(step.ReviewNotes))
+                        {
+                            <span class="ms-2">— @step.ReviewNotes</span>
+                        }
+                    </small>
+                }
+
                 @if (step.StartedAt.HasValue || step.FinishedAt.HasValue)
                 {
                     <small class="text-muted d-block mt-1">
@@ -148,8 +220,7 @@ else
     </div>
 }
 
-@if (Model.Status != AnalyzerOrchestrator.Domain.Enums.RunStatus.Completed &&
-     Model.Status != AnalyzerOrchestrator.Domain.Enums.RunStatus.Cancelled)
+@if (Model.Status != RunStatus.Completed && Model.Status != RunStatus.Cancelled)
 {
     <form asp-action="Cancel" asp-route-id="@Model.Id" method="post"
           onsubmit="return confirm('Cancelar este run?')">

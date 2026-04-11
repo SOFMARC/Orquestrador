@@ -1,0 +1,108 @@
+@using AnalyzerOrchestrator.Application.DTOs.PipelineRuns
+@using AnalyzerOrchestrator.Domain.Enums
+@model AnalyzerOrchestrator.Application.DTOs.Extraction.StepReviewDto
+@{
+    ViewData["Title"] = "Revisar Extração Estrutural";
+    var run = ViewBag.Run as PipelineRunDto;
+    var step = ViewBag.Step as PipelineStepExecutionDto;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
+        <li class="breadcrumb-item">
+            <a asp-controller="PipelineRuns" asp-action="ByProject" asp-route-id="@run?.ProjectId">@run?.ProjectName</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a asp-controller="Extraction" asp-action="Result" asp-route-id="@run?.Id">Resultado — Run #@run?.Id</a>
+        </li>
+        <li class="breadcrumb-item active">Revisão</li>
+    </ol>
+</nav>
+
+<div class="d-flex align-items-center mb-3">
+    <h2><i class="bi bi-clipboard-check me-2"></i>Revisão Humana — Etapa 1</h2>
+</div>
+
+@if (step is not null)
+{
+    <div class="card mb-4 shadow-sm border-warning">
+        <div class="card-header bg-warning text-dark">
+            <i class="bi bi-exclamation-circle me-2"></i>Aguardando Revisão
+        </div>
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Etapa</dt>
+                <dd class="col-sm-9">@step.StepName</dd>
+                <dt class="col-sm-3">Arquivos encontrados</dt>
+                <dd class="col-sm-9">@step.FilesFound</dd>
+                <dt class="col-sm-3">Arquivos ignorados</dt>
+                <dd class="col-sm-9">@step.FilesIgnored</dd>
+                @if (step.ErrorCount > 0)
+                {
+                    <dt class="col-sm-3">Erros de acesso</dt>
+                    <dd class="col-sm-9 text-danger">@step.ErrorCount</dd>
+                }
+                @if (!string.IsNullOrWhiteSpace(step.Notes))
+                {
+                    <dt class="col-sm-3">Notas</dt>
+                    <dd class="col-sm-9">@step.Notes</dd>
+                }
+                @if (!string.IsNullOrWhiteSpace(step.ErrorMessage))
+                {
+                    <dt class="col-sm-3">Erros</dt>
+                    <dd class="col-sm-9 text-danger small font-monospace">@step.ErrorMessage</dd>
+                }
+            </dl>
+        </div>
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-header"><i class="bi bi-pencil-square me-2"></i>Registrar Decisão</div>
+    <div class="card-body">
+        <form asp-action="Review" asp-route-id="@Model.StepExecutionId" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="RunId" value="@run?.Id" />
+            <input type="hidden" asp-for="StepExecutionId" />
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Decisão <span class="text-danger">*</span></label>
+                <div class="d-flex gap-3">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="Decision"
+                               id="decisionApproved" value="@((int)StepStatus.Approved)" required />
+                        <label class="form-check-label text-success fw-semibold" for="decisionApproved">
+                            <i class="bi bi-check-circle-fill me-1"></i> Aprovar
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="Decision"
+                               id="decisionRejected" value="@((int)StepStatus.Rejected)" required />
+                        <label class="form-check-label text-danger fw-semibold" for="decisionRejected">
+                            <i class="bi bi-x-circle-fill me-1"></i> Reprovar
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ReviewedBy" class="form-label fw-semibold">Revisado por</label>
+                <input asp-for="ReviewedBy" class="form-control" placeholder="Seu nome (opcional)" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ReviewNotes" class="form-label fw-semibold">Observações</label>
+                <textarea asp-for="ReviewNotes" class="form-control" rows="4"
+                          placeholder="Descreva o motivo da aprovação ou reprovação (opcional)..."></textarea>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i> Confirmar Revisão
+                </button>
+                <a asp-action="Result" asp-route-id="@run?.Id" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>

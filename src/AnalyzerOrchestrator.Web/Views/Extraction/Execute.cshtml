@@ -1,0 +1,61 @@
+@using AnalyzerOrchestrator.Application.DTOs.PipelineRuns
+@{
+    ViewData["Title"] = "Executar Extração Estrutural";
+    var run = ViewBag.Run as PipelineRunDto;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
+        <li class="breadcrumb-item">
+            <a asp-controller="PipelineRuns" asp-action="ByProject" asp-route-id="@run?.ProjectId">@run?.ProjectName</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a asp-controller="PipelineRuns" asp-action="Details" asp-route-id="@run?.Id">Run #@run?.Id</a>
+        </li>
+        <li class="breadcrumb-item active">Extração Estrutural</li>
+    </ol>
+</nav>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-search me-2"></i>Etapa 1 — Extração Estrutural</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">
+            Esta etapa irá varrer o diretório do projeto, inventariar os arquivos, gerar a árvore estrutural
+            e identificar os arquivos mais relevantes para análise com IA.
+        </p>
+
+        <div class="alert alert-info">
+            <strong>Projeto:</strong> @run?.ProjectName &nbsp;|&nbsp;
+            <strong>Run:</strong> #@run?.Id &nbsp;|&nbsp;
+            <strong>Status:</strong> <span class="badge bg-secondary">@run?.StatusLabel</span>
+        </div>
+
+        <h6 class="mt-3">O que será gerado:</h6>
+        <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item"><i class="bi bi-file-earmark-text me-2 text-primary"></i><strong>inventory.json</strong> — Inventário completo de todos os arquivos encontrados</li>
+            <li class="list-group-item"><i class="bi bi-diagram-3 me-2 text-success"></i><strong>tree.txt</strong> — Árvore estrutural de pastas e arquivos</li>
+            <li class="list-group-item"><i class="bi bi-star me-2 text-warning"></i><strong>relevant-files.json</strong> — Lista dos arquivos mais relevantes para IA</li>
+            <li class="list-group-item"><i class="bi bi-file-earmark-medical me-2 text-info"></i><strong>summary.md</strong> — Resumo executivo da extração</li>
+        </ul>
+
+        <form asp-action="Execute" asp-route-id="@run?.Id" method="post">
+            @Html.AntiForgeryToken()
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-lg"
+                        onclick="this.disabled=true; this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Executando...'; this.form.submit();">
+                    <i class="bi bi-play-fill me-1"></i> Iniciar Extração
+                </button>
+                <a asp-controller="PipelineRuns" asp-action="Details" asp-route-id="@run?.Id"
+                   class="btn btn-outline-secondary btn-lg">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
