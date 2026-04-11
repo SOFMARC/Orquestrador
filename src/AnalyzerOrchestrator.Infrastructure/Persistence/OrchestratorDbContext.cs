@@ -11,9 +11,11 @@ public class OrchestratorDbContext : DbContext
     }
 
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectScanSettings> ProjectScanSettings => Set<ProjectScanSettings>();
     public DbSet<PipelineRun> PipelineRuns => Set<PipelineRun>();
     public DbSet<PipelineStepExecution> PipelineStepExecutions => Set<PipelineStepExecution>();
     public DbSet<Artifact> Artifacts => Set<Artifact>();
+    public DbSet<ScannedFile> ScannedFiles => Set<ScannedFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
