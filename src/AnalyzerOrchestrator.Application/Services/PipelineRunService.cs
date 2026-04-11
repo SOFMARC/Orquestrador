@@ -92,7 +92,9 @@ public class PipelineRunService : IPipelineRunService
         TriggerSource = r.TriggerSource,
         CreatedAt = r.CreatedAt,
         TotalSteps = r.StepExecutions?.Count ?? 0,
-        CompletedSteps = r.StepExecutions?.Count(s => s.Status == StepStatus.Completed) ?? 0
+        CompletedSteps = r.StepExecutions?.Count(s =>
+            s.Status == StepStatus.Completed ||
+            s.Status == StepStatus.Approved) ?? 0
     };
 
     private static PipelineRunDto MapToDtoWithSteps(PipelineRun r)
@@ -110,7 +112,13 @@ public class PipelineRunService : IPipelineRunService
                 StartedAt = s.StartedAt,
                 FinishedAt = s.FinishedAt,
                 Notes = s.Notes,
-                ErrorMessage = s.ErrorMessage
+                ErrorMessage = s.ErrorMessage,
+                FilesFound = s.FilesFound,
+                FilesIgnored = s.FilesIgnored,
+                ErrorCount = s.ErrorCount,
+                ReviewedAt = s.ReviewedAt,
+                ReviewedBy = s.ReviewedBy,
+                ReviewNotes = s.ReviewNotes
             }).ToList() ?? new();
         return dto;
     }
