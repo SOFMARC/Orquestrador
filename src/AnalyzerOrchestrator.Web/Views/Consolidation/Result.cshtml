@@ -1,0 +1,335 @@
+@model AnalyzerOrchestrator.Application.DTOs.Consolidation.ConsolidationResultDto
+@{
+    ViewData["Title"] = "Resultado da Consolidação Arquitetural";
+    var run = ViewBag.Run as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineRunDto;
+    var step2 = ViewBag.Step2 as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineStepExecutionDto;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-0">Resultado — Consolidação Arquitetural</h2>
+        <small class="text-muted">Run #@run?.Id — @run?.ProjectName</small>
+    </div>
+    <div class="d-flex gap-2">
+        @if (step2?.Status == AnalyzerOrchestrator.Domain.Enums.StepStatus.AwaitingReview)
+        {
+            <a asp-action="Review" asp-controller="Consolidation" asp-route-stepId="@step2.Id"
+               class="btn btn-warning">
+                <i class="bi bi-pencil-square me-1"></i>Revisar
+            </a>
+        }
+        <a asp-action="Details" asp-controller="PipelineRuns" asp-route-id="@run?.Id"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar para a Run
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<!-- Métricas resumidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h2 class="text-primary mb-0">@Model.ModulesCount</h2>
+                <small class="text-muted">Módulos Detectados</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h2 class="text-info mb-0">@Model.LayersCount</h2>
+                <small class="text-muted">Camadas Identificadas</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h2 class="text-success mb-0">@Model.CentralFilesCount</h2>
+                <small class="text-muted">Arquivos Centrais</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-secondary">
+            <div class="card-body">
+                @{
+                    var statusBadge = step2?.Status switch
+                    {
+                        AnalyzerOrchestrator.Domain.Enums.StepStatus.AwaitingReview => "bg-warning text-dark",
+                        AnalyzerOrchestrator.Domain.Enums.StepStatus.Approved => "bg-success",
+                        AnalyzerOrchestrator.Domain.Enums.StepStatus.Rejected => "bg-danger",
+                        _ => "bg-secondary"
+                    };
+                }
+                <span class="badge @statusBadge fs-6">@step2?.Status</span>
+                <div><small class="text-muted">Status da Etapa</small></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Distribuição por Camada -->
+@if (Model.Layers.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-layers me-2"></i><strong>Distribuição por Camada</strong>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Camada</th>
+                            <th class="text-center">Arquivos</th>
+                            <th>Papéis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var layer in Model.Layers.OrderByDescending(l => l.FileCount))
+                        {
+                            <tr>
+                                <td><strong>@layer.Name</strong></td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary">@layer.FileCount</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        @string.Join(", ", layer.Roles.OrderByDescending(r => r.Value).Take(4).Select(r => $"{r.Key} ({r.Value})"))
+                                    </small>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Módulos Detectados -->
+@if (Model.Modules.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-diagram-3 me-2"></i><strong>Módulos Detectados</strong>
+        </div>
+        <div class="card-body p-0">
+            <div class="accordion" id="modulesAccordion">
+                @for (int i = 0; i < Model.Modules.Count; i++)
+                {
+                    var m = Model.Modules[i];
+                    var collapseId = $"module-{i}";
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button @(i > 0 ? "collapsed" : "")" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#@collapseId">
+                                <div class="d-flex justify-content-between w-100 me-3">
+                                    <span>
+                                        <i class="bi bi-folder2 me-2 text-warning"></i>
+                                        <strong>@m.Name</strong>
+                                    </span>
+                                    <span>
+                                        <span class="badge bg-secondary me-2">@m.DetectedLayer</span>
+                                        <span class="badge bg-primary">@m.FileCount arquivos</span>
+                                    </span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="@collapseId" class="accordion-collapse collapse @(i == 0 ? "show" : "")">
+                            <div class="accordion-body">
+                                <p class="text-muted small mb-2">@m.Observations</p>
+                                @if (m.FilesByRole.Any())
+                                {
+                                    <div class="mb-2">
+                                        <strong>Por papel:</strong>
+                                        @foreach (var role in m.FilesByRole.OrderByDescending(r => r.Value))
+                                        {
+                                            <span class="badge bg-light text-dark border me-1">@role.Key: @role.Value</span>
+                                        }
+                                    </div>
+                                }
+                                @if (m.TopFiles.Any())
+                                {
+                                    <div>
+                                        <strong>Principais arquivos:</strong>
+                                        <ul class="list-unstyled mb-0 mt-1">
+                                            @foreach (var f in m.TopFiles)
+                                            {
+                                                <li><code class="small">@f</code></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Arquivos Centrais -->
+@if (Model.CentralFiles.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-star me-2"></i><strong>Arquivos Centrais</strong>
+            <span class="badge bg-secondary ms-2">@Model.CentralFiles.Count</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Arquivo</th>
+                            <th>Papel</th>
+                            <th class="text-center">Score</th>
+                            <th>Motivo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cf in Model.CentralFiles)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@cf.FileName</strong>
+                                    <div><code class="small text-muted">@cf.RelativePath</code></div>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">@cf.Role</span></td>
+                                <td class="text-center">
+                                    <span class="badge bg-@(cf.RelevanceScore >= 80 ? "success" : cf.RelevanceScore >= 50 ? "warning text-dark" : "secondary")">
+                                        @cf.RelevanceScore
+                                    </span>
+                                </td>
+                                <td><small class="text-muted">@cf.Reason</small></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Observações Automáticas -->
+@if (Model.Observations.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-lightbulb me-2"></i><strong>Observações Automáticas</strong>
+        </div>
+        <div class="card-body">
+            <ul class="mb-0">
+                @foreach (var obs in Model.Observations)
+                {
+                    <li>@obs</li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+<!-- Resumo Arquitetural (Markdown) -->
+@if (!string.IsNullOrWhiteSpace(Model.ArchitectureSummaryContent))
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-file-earmark-text me-2"></i><strong>architecture-summary.md</strong></span>
+            <button class="btn btn-sm btn-outline-secondary" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#archSummaryCollapse">
+                Expandir/Recolher
+            </button>
+        </div>
+        <div class="collapse show" id="archSummaryCollapse">
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded" style="white-space: pre-wrap; font-size: 0.85rem;">@Model.ArchitectureSummaryContent</pre>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Artefatos gerados -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-folder2-open me-2"></i><strong>Artefatos Gerados</strong>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            @if (!string.IsNullOrEmpty(Model.ModulesMapPath))
+            {
+                <div class="col-md-4 mb-2">
+                    <div class="p-2 border rounded">
+                        <i class="bi bi-file-earmark-code text-primary me-1"></i>
+                        <strong>modules-map.json</strong>
+                        <div class="small text-muted text-truncate" title="@Model.ModulesMapPath">@Model.ModulesMapPath</div>
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.ArchitectureSummaryPath))
+            {
+                <div class="col-md-4 mb-2">
+                    <div class="p-2 border rounded">
+                        <i class="bi bi-file-earmark-text text-success me-1"></i>
+                        <strong>architecture-summary.md</strong>
+                        <div class="small text-muted text-truncate" title="@Model.ArchitectureSummaryPath">@Model.ArchitectureSummaryPath</div>
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.LayerDistributionPath))
+            {
+                <div class="col-md-4 mb-2">
+                    <div class="p-2 border rounded">
+                        <i class="bi bi-file-earmark-code text-info me-1"></i>
+                        <strong>layer-distribution.json</strong>
+                        <div class="small text-muted text-truncate" title="@Model.LayerDistributionPath">@Model.LayerDistributionPath</div>
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.CentralFilesPath))
+            {
+                <div class="col-md-4 mb-2">
+                    <div class="p-2 border rounded">
+                        <i class="bi bi-file-earmark-code text-warning me-1"></i>
+                        <strong>central-files.json</strong>
+                        <div class="small text-muted text-truncate" title="@Model.CentralFilesPath">@Model.CentralFilesPath</div>
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.Step2SummaryPath))
+            {
+                <div class="col-md-4 mb-2">
+                    <div class="p-2 border rounded">
+                        <i class="bi bi-file-earmark-text text-secondary me-1"></i>
+                        <strong>step-2-summary.md</strong>
+                        <div class="small text-muted text-truncate" title="@Model.Step2SummaryPath">@Model.Step2SummaryPath</div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Ação de revisão -->
+@if (step2?.Status == AnalyzerOrchestrator.Domain.Enums.StepStatus.AwaitingReview)
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-clock-history me-2"></i>
+            <strong>Aguardando revisão humana.</strong>
+            Revise os artefatos gerados e aprove ou reprove esta etapa.
+        </div>
+        <a asp-action="Review" asp-controller="Consolidation" asp-route-stepId="@step2.Id"
+           class="btn btn-warning">
+            <i class="bi bi-pencil-square me-1"></i>Revisar Agora
+        </a>
+    </div>
+}

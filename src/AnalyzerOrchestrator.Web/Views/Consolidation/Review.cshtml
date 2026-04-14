@@ -1,0 +1,193 @@
+@model AnalyzerOrchestrator.Application.DTOs.Extraction.StepReviewDto
+@{
+    ViewData["Title"] = "Revisar Consolidação Arquitetural";
+    var run = ViewBag.Run as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineRunDto;
+    var step2 = ViewBag.Step2 as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineStepExecutionDto;
+    var result = ViewBag.Result as AnalyzerOrchestrator.Application.DTOs.Consolidation.ConsolidationResultDto;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-0">Revisão — Consolidação Arquitetural</h2>
+        <small class="text-muted">Run #@run?.Id — @run?.ProjectName</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Result" asp-controller="Consolidation" asp-route-runId="@run?.Id"
+           class="btn btn-outline-primary">
+            <i class="bi bi-eye me-1"></i>Ver Resultado Completo
+        </a>
+        <a asp-action="Details" asp-controller="PipelineRuns" asp-route-id="@run?.Id"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar para a Run
+        </a>
+    </div>
+</div>
+
+<!-- Resumo do que foi gerado -->
+@if (result != null)
+{
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center border-primary">
+                <div class="card-body py-2">
+                    <h3 class="text-primary mb-0">@result.ModulesCount</h3>
+                    <small class="text-muted">Módulos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-info">
+                <div class="card-body py-2">
+                    <h3 class="text-info mb-0">@result.LayersCount</h3>
+                    <small class="text-muted">Camadas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-success">
+                <div class="card-body py-2">
+                    <h3 class="text-success mb-0">@result.CentralFilesCount</h3>
+                    <small class="text-muted">Arquivos Centrais</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-secondary">
+                <div class="card-body py-2">
+                    <h3 class="text-secondary mb-0">@step2?.FilesFound</h3>
+                    <small class="text-muted">Arquivos Analisados</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camadas detectadas (resumo para revisão) -->
+    @if (result.Layers.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-layers me-2"></i><strong>Camadas Detectadas</strong></div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var layer in result.Layers.OrderByDescending(l => l.FileCount))
+                    {
+                        <span class="badge bg-primary fs-6">@layer.Name (@layer.FileCount)</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Módulos (resumo) -->
+    @if (result.Modules.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-diagram-3 me-2"></i><strong>Módulos Detectados</strong></div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Módulo</th>
+                                <th>Camada</th>
+                                <th class="text-center">Arquivos</th>
+                                <th>Observação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var m in result.Modules)
+                            {
+                                <tr>
+                                    <td><strong>@m.Name</strong></td>
+                                    <td><span class="badge bg-secondary">@m.DetectedLayer</span></td>
+                                    <td class="text-center">@m.FileCount</td>
+                                    <td><small class="text-muted">@m.Observations</small></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Observações automáticas -->
+    @if (result.Observations.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-lightbulb me-2"></i><strong>Observações Automáticas</strong></div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    @foreach (var obs in result.Observations)
+                    {
+                        <li>@obs</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+}
+
+<!-- Formulário de revisão -->
+<div class="card border-warning">
+    <div class="card-header bg-warning text-dark">
+        <i class="bi bi-pencil-square me-2"></i><strong>Decisão de Revisão</strong>
+    </div>
+    <div class="card-body">
+        <form asp-action="Review" method="post">
+            <input type="hidden" asp-for="StepExecutionId" />
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger d-none"></div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Decisão <span class="text-danger">*</span></label>
+                <div class="d-flex gap-3">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" asp-for="Decision"
+                               value="@AnalyzerOrchestrator.Domain.Enums.StepStatus.Approved"
+                               id="decisionApprove" />
+                        <label class="form-check-label text-success fw-bold" for="decisionApprove">
+                            <i class="bi bi-check-circle me-1"></i>Aprovar
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" asp-for="Decision"
+                               value="@AnalyzerOrchestrator.Domain.Enums.StepStatus.Rejected"
+                               id="decisionReject" />
+                        <label class="form-check-label text-danger fw-bold" for="decisionReject">
+                            <i class="bi bi-x-circle me-1"></i>Reprovar
+                        </label>
+                    </div>
+                </div>
+                <span asp-validation-for="Decision" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ReviewedBy" class="form-label">Revisor</label>
+                <input asp-for="ReviewedBy" class="form-control" placeholder="Seu nome (opcional)" />
+                <span asp-validation-for="ReviewedBy" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="ReviewNotes" class="form-label">Observações</label>
+                <textarea asp-for="ReviewNotes" class="form-control" rows="4"
+                          placeholder="Descreva o que foi verificado, pontos de atenção ou motivo da reprovação..."></textarea>
+                <span asp-validation-for="ReviewNotes" class="text-danger small"></span>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning btn-lg">
+                    <i class="bi bi-check2-square me-2"></i>Confirmar Revisão
+                </button>
+                <a asp-action="Details" asp-controller="PipelineRuns" asp-route-id="@run?.Id"
+                   class="btn btn-outline-secondary btn-lg">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

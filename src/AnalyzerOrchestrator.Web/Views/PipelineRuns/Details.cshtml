@@ -134,7 +134,7 @@ else
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge @stepBadge">@step.StatusLabel</span>
 
-                        @* Botão de ação para Etapa 1 *@
+                        @* Botão de ação para Etapa 1 — Extração Estrutural *@
                         @if (step.StepNumber == 1)
                         {
                             if (step.CanBeExecuted)
@@ -159,6 +159,46 @@ else
                             else if (step.IsExecuted)
                             {
                                 <a asp-controller="Extraction" asp-action="Result" asp-route-id="@Model.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye me-1"></i>Ver Resultado
+                                </a>
+                            }
+                        }
+
+                        @* Botões de ação para Etapa 2 — Consolidação Arquitetural *@
+                        @if (step.StepNumber == 2)
+                        {
+                            @* Verificar se Etapa 1 está aprovada para habilitar execução *@
+                            var step1Status = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.Status;
+                            var step1Approved = step1Status == StepStatus.Approved;
+
+                            if (step.CanBeExecuted && step1Approved)
+                            {
+                                <a asp-controller="Consolidation" asp-action="Execute" asp-route-runId="@Model.Id"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="bi bi-diagram-3 me-1"></i>Executar
+                                </a>
+                            }
+                            else if (step.CanBeExecuted && !step1Approved)
+                            {
+                                <span class="btn btn-sm btn-outline-secondary disabled" title="Aguardando aprovação da Etapa 1">
+                                    <i class="bi bi-lock me-1"></i>Aguardando Etapa 1
+                                </span>
+                            }
+                            else if (step.CanBeReviewed)
+                            {
+                                <a asp-controller="Consolidation" asp-action="Review" asp-route-stepId="@step.Id"
+                                   class="btn btn-sm btn-warning">
+                                    <i class="bi bi-clipboard-check me-1"></i>Revisar
+                                </a>
+                                <a asp-controller="Consolidation" asp-action="Result" asp-route-runId="@Model.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye me-1"></i>Ver Resultado
+                                </a>
+                            }
+                            else if (step.IsExecuted)
+                            {
+                                <a asp-controller="Consolidation" asp-action="Result" asp-route-runId="@Model.Id"
                                    class="btn btn-sm btn-outline-secondary">
                                     <i class="bi bi-eye me-1"></i>Ver Resultado
                                 </a>

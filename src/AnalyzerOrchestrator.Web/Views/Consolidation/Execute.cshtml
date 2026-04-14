@@ -1,0 +1,138 @@
+@{
+    ViewData["Title"] = "Executar Consolidação Arquitetural";
+    var run = ViewBag.Run as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineRunDto;
+    var step1 = ViewBag.Step1 as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineStepExecutionDto;
+    var step2 = ViewBag.Step2 as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineStepExecutionDto;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-0">Consolidação Arquitetural</h2>
+        <small class="text-muted">Run #@run?.Id — @run?.ProjectName</small>
+    </div>
+    <a asp-action="Details" asp-controller="PipelineRuns" asp-route-id="@run?.Id"
+       class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar para a Run
+    </a>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<!-- Status da Etapa 1 -->
+<div class="card mb-4 border-success">
+    <div class="card-header bg-success text-white">
+        <i class="bi bi-check-circle-fill me-2"></i>Etapa 1 — Extração Estrutural (pré-requisito)
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <strong>Status:</strong>
+                <span class="badge bg-success ms-1">Aprovada</span>
+            </div>
+            @if (step1?.FilesFound.HasValue == true)
+            {
+                <div class="col-md-3">
+                    <strong>Arquivos encontrados:</strong> @step1.FilesFound
+                </div>
+            }
+            @if (step1?.ReviewedAt.HasValue == true)
+            {
+                <div class="col-md-3">
+                    <strong>Aprovado em:</strong> @step1.ReviewedAt.Value.ToString("dd/MM/yyyy HH:mm")
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(step1?.ReviewedBy))
+            {
+                <div class="col-md-3">
+                    <strong>Por:</strong> @step1.ReviewedBy
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Descrição da etapa -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <i class="bi bi-diagram-3 me-2"></i>Etapa 2 — Consolidação Arquitetural
+    </div>
+    <div class="card-body">
+        <p class="mb-3">
+            Esta etapa analisa os <strong>@step1?.FilesFound arquivo(s)</strong> encontrados na extração e produz
+            uma visão consolidada da arquitetura do projeto.
+        </p>
+        <p class="mb-3">Serão gerados os seguintes artefatos:</p>
+        <div class="row">
+            <div class="col-md-6">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex align-items-center">
+                        <i class="bi bi-file-earmark-code text-primary me-2"></i>
+                        <div>
+                            <strong>modules-map.json</strong>
+                            <div class="small text-muted">Mapa de módulos detectados com distribuição por papel</div>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <i class="bi bi-file-earmark-text text-success me-2"></i>
+                        <div>
+                            <strong>architecture-summary.md</strong>
+                            <div class="small text-muted">Resumo arquitetural em Markdown para leitura humana e IA</div>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <i class="bi bi-file-earmark-code text-info me-2"></i>
+                        <div>
+                            <strong>layer-distribution.json</strong>
+                            <div class="small text-muted">Distribuição de arquivos por camada arquitetural</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex align-items-center">
+                        <i class="bi bi-file-earmark-code text-warning me-2"></i>
+                        <div>
+                            <strong>central-files.json</strong>
+                            <div class="small text-muted">Arquivos centrais para entendimento da arquitetura</div>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <i class="bi bi-file-earmark-text text-secondary me-2"></i>
+                        <div>
+                            <strong>step-2-summary.md</strong>
+                            <div class="small text-muted">Resumo executivo da consolidação com métricas</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        @if (step2 != null && step2.Status != AnalyzerOrchestrator.Domain.Enums.StepStatus.Pending)
+        {
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Esta etapa já foi executada (status: <strong>@step2.Status</strong>).
+                Executar novamente irá sobrescrever os artefatos anteriores.
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Formulário de confirmação -->
+<form asp-action="Execute" method="post">
+    <input type="hidden" name="runId" value="@run?.Id" />
+    @Html.AntiForgeryToken()
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-play-fill me-2"></i>Executar Consolidação Arquitetural
+        </button>
+        <a asp-action="Details" asp-controller="PipelineRuns" asp-route-id="@run?.Id"
+           class="btn btn-outline-secondary btn-lg">
+            Cancelar
+        </a>
+    </div>
+</form>
