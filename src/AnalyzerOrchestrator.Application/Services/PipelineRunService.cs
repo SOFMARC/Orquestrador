@@ -122,6 +122,13 @@ public class PipelineRunService : IPipelineRunService
                 FilesFound = s.FilesFound,
                 FilesIgnored = s.FilesIgnored,
                 ErrorCount = s.ErrorCount,
+                // Métricas específicas por etapa
+                ModulesCount = s.ModulesCount,
+                LayersCount = s.LayersCount,
+                CentralFilesCount = s.CentralFilesCount,
+                TablesCount = s.TablesCount,
+                RelationsCount = s.RelationsCount,
+                // Revisão humana
                 ReviewedAt = s.ReviewedAt,
                 ReviewedBy = s.ReviewedBy,
                 ReviewNotes = s.ReviewNotes
