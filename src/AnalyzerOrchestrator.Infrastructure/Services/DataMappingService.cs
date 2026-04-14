@@ -125,7 +125,7 @@ public class DataMappingService : IDataMappingService
             };
         }
 
-        var step3 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepDependencyAnalysis)
+        var step3 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepDataMapping)
             ?? throw new InvalidOperationException("Etapa de Mapeamento de Dados não encontrada na run.");
 
         // Marcar como Running
@@ -241,11 +241,13 @@ public class DataMappingService : IDataMappingService
             await PersistArtifactAsync(pipelineRunId, "table-operations.json",     ArtifactType.TableOperations,    tableOpsPath,       "application/json", ct);
             await PersistArtifactAsync(pipelineRunId, "data-mapping-summary.md",   ArtifactType.DataMappingSummary, summaryPath,        "text/markdown",    ct);
 
-            // Atualizar step
+            // Atualizar step com métricas explícitas (sem depender de parsing de Notes)
             step3.Status = StepStatus.AwaitingReview;
             step3.FinishedAt = DateTime.UtcNow;
             step3.FilesFound = filesAnalyzed;
             step3.ErrorCount = errors;
+            step3.TablesCount = detectedTables.Count;
+            step3.RelationsCount = detectedTables.Sum(t => t.FileRelations.Count);
             step3.Notes = $"Mapeamento concluído. {detectedTables.Count} tabelas detectadas em {filesAnalyzed} arquivos.";
             run.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(ct);
@@ -317,7 +319,7 @@ public class DataMappingService : IDataMappingService
 
         if (run is null) return null;
 
-        var step3 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepDependencyAnalysis);
+        var step3 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepDataMapping);
         if (step3 is null || step3.Status == StepStatus.Pending) return null;
 
         var summaryPath = run.Artifacts
@@ -602,13 +604,16 @@ public class DataMappingService : IDataMappingService
             .FirstOrDefaultAsync(a => a.PipelineRunId == runId && a.Type == type, ct);
         if (existing != null) _context.Artifacts.Remove(existing);
 
+        var fileInfo = new FileInfo(filePath);
         _context.Artifacts.Add(new Artifact
         {
             PipelineRunId = runId,
+            StepNumber = DefaultAnalysisWorkflow.StepDataMapping,
             Name = name,
             Type = type,
             FilePath = filePath,
             MimeType = mimeType,
+            SizeBytes = fileInfo.Exists ? fileInfo.Length : null,
             CreatedAt = DateTime.UtcNow
         });
         await _context.SaveChangesAsync(ct);

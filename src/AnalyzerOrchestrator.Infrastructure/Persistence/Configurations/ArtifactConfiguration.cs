@@ -34,6 +34,11 @@ public class ArtifactConfiguration : IEntityTypeConfiguration<Artifact>
         builder.Property(a => a.Content)
             .HasColumnType("TEXT");
 
+        builder.Property(a => a.StepNumber)
+            .IsRequired()
+            .HasDefaultValue(0);
+
         builder.HasIndex(a => a.PipelineRunId);
+        builder.HasIndex(a => new { a.PipelineRunId, a.StepNumber });
     }
 }

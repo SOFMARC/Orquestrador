@@ -27,10 +27,19 @@ public class PipelineStepExecutionConfiguration : IEntityTypeConfiguration<Pipel
         builder.Property(s => s.ErrorMessage)
             .HasMaxLength(4000);
 
-        // Métricas de execução
+        // Métricas genéricas de execução
         builder.Property(s => s.FilesFound);
         builder.Property(s => s.FilesIgnored);
         builder.Property(s => s.ErrorCount);
+
+        // Métricas específicas — Etapa 2 (Consolidação Arquitetural)
+        builder.Property(s => s.ModulesCount);
+        builder.Property(s => s.LayersCount);
+        builder.Property(s => s.CentralFilesCount);
+
+        // Métricas específicas — Etapa 3 (Mapeamento de Dados)
+        builder.Property(s => s.TablesCount);
+        builder.Property(s => s.RelationsCount);
 
         // Revisão humana
         builder.Property(s => s.ReviewedBy).HasMaxLength(200);

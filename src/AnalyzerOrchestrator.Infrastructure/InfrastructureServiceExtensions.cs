@@ -28,6 +28,9 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IArchitecturalConsolidationService, ArchitecturalConsolidationService>();
         services.AddScoped<IDataMappingService, DataMappingService>();
 
+        // Serviços de consulta (reutilizáveis por múltiplas etapas)
+        services.AddScoped<IArtifactQueryService, ArtifactQueryService>();
+
         return services;
     }
 }

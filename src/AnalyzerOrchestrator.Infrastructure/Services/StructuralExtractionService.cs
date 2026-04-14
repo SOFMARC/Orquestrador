@@ -486,6 +486,7 @@ public class StructuralExtractionService : IStructuralExtractionService
             _context.Artifacts.Add(new Artifact
             {
                 PipelineRunId = runId,
+                StepNumber = DefaultAnalysisWorkflow.StepStructuralExtraction,
                 Name = name,
                 Type = type,
                 FilePath = filePath,

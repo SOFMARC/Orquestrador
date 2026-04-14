@@ -94,7 +94,7 @@ public class ArchitecturalConsolidationService : IArchitecturalConsolidationServ
         }
 
         var step2 = run.StepExecutions
-            .FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepStructureMapping)
+            .FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepArchitecturalConsolidation)
             ?? throw new InvalidOperationException("Etapa de Consolidação Arquitetural não encontrada na run.");
 
         // Marcar como Running
@@ -148,11 +148,14 @@ public class ArchitecturalConsolidationService : IArchitecturalConsolidationServ
             await PersistArtifactAsync(pipelineRunId, "central-files.json",        ArtifactType.CentralFiles,        centralFilesPath, "application/json", ct);
             await PersistArtifactAsync(pipelineRunId, "step-2-summary.md",         ArtifactType.Step2Summary,        step2SummaryPath, "text/markdown",    ct);
 
-            // Atualizar step
+            // Atualizar step com métricas explícitas (sem depender de parsing de Notes)
             step2.Status = StepStatus.AwaitingReview;
             step2.FinishedAt = DateTime.UtcNow;
             step2.FilesFound = files.Count;
-            step2.Notes = $"Consolidação concluída. {modules.Count} módulos detectados, {centralFiles.Count} arquivos centrais, {layers.Count} camadas.";
+            step2.ModulesCount = modules.Count;
+            step2.LayersCount = layers.Count;
+            step2.CentralFilesCount = centralFiles.Count;
+            step2.Notes = $"Consolidação concluída. {modules.Count} módulos, {layers.Count} camadas, {centralFiles.Count} arquivos centrais.";
             run.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(ct);
 
@@ -226,7 +229,7 @@ public class ArchitecturalConsolidationService : IArchitecturalConsolidationServ
         if (run is null) return null;
 
         var step2 = run.StepExecutions
-            .FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepStructureMapping);
+            .FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepArchitecturalConsolidation);
 
         if (step2 is null || step2.Status == StepStatus.Pending) return null;
 
@@ -706,6 +709,7 @@ public class ArchitecturalConsolidationService : IArchitecturalConsolidationServ
             _context.Artifacts.Add(new Artifact
             {
                 PipelineRunId = runId,
+                StepNumber = DefaultAnalysisWorkflow.StepArchitecturalConsolidation,
                 Name = name,
                 Type = type,
                 FilePath = filePath,
