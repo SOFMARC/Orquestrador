@@ -6,4 +6,5 @@ public interface IPipelineRunRepository : IRepository<PipelineRun>
 {
     Task<IEnumerable<PipelineRun>> GetByProjectAsync(int projectId);
     Task<PipelineRun?> GetWithStepsAsync(int id);
+    Task<PipelineRun?> GetByStepIdAsync(int stepId);
 }

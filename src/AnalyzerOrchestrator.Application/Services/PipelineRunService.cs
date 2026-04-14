@@ -65,6 +65,12 @@ public class PipelineRunService : IPipelineRunService
         return MapToDtoWithSteps(run);
     }
 
+    public async Task<PipelineRunDto?> GetByStepIdAsync(int stepId)
+    {
+        var run = await _runRepository.GetByStepIdAsync(stepId);
+        return run is null ? null : MapToDtoWithSteps(run);
+    }
+
     public async Task<bool> CancelAsync(int id)
     {
         var run = await _runRepository.GetByIdAsync(id);

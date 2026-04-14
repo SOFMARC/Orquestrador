@@ -8,4 +8,7 @@ public interface IPipelineRunService
     Task<PipelineRunDto?> GetByIdAsync(int id);
     Task<PipelineRunDto> CreateAsync(CreatePipelineRunDto dto);
     Task<bool> CancelAsync(int id);
+
+    /// <summary>Retorna a run que contém o step com o Id informado.</summary>
+    Task<PipelineRunDto?> GetByStepIdAsync(int stepId);
 }
