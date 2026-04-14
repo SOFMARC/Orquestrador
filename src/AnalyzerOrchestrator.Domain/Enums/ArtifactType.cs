@@ -17,8 +17,15 @@ public enum ArtifactType
     CentralFiles = 8,
     Step2Summary = 9,
 
+    // Etapa 3 — Mapeamento de Dados (Step 3)
+    DetectedTables = 11,
+    TableFileRelations = 12,
+    FileTableRelations = 13,
+    TableOperations = 14,
+    DataMappingSummary = 15,
+
     // Etapas futuras
-    ContextDocument = 10,
-    AnalysisReport = 12,
+    ContextDocument = 20,
+    AnalysisReport = 21,
     Other = 99
 }
