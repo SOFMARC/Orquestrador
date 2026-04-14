@@ -51,8 +51,8 @@ src/
 |---|-------|--------|-----------|
 | 1 | Extração Estrutural | ✅ Implementado | Varredura real do diretório, inventário, árvore, classificação de arquivos |
 | 2 | Consolidação Arquitetural | ✅ Implementado | Agrupamento por módulos/camadas, arquivos centrais, resumo arquitetural |
-| 3 | Análise de Dependências | 🔜 Próxima etapa | Levantamento de pacotes, dependências externas e integrações |
-| 4 | Análise de Banco de Dados | 🔜 Futuro | Identificação de tabelas, relacionamentos e convenções |
+| 3 | Mapeamento Inicial de Dados | ✅ Implementado | Detecção de tabelas por heurística, relações tabela↔arquivo, operações detectadas |
+| 4 | Análise de Dependências | 🔜 Próxima etapa | Levantamento de pacotes, dependências externas e integrações |
 | 5 | Preparação do Contexto | 🔜 Futuro | Consolidação final para uso com IA |
 
 ---
@@ -95,6 +95,25 @@ src/
 | `central-files.json` | Arquivos centrais identificados |
 | `step-2-summary.md` | Resumo executivo da consolidação |
 
+### Etapa 3 — Mapeamento Inicial de Dados
+
+> Requer que a Etapa 1 esteja **aprovada**.
+
+1. Na tela de detalhes do Run, clique **Executar** na Etapa 3
+2. Aguarde a análise dos arquivos por heurística
+3. Visualize o resultado: tabelas detectadas com nível de confiança, relações tabela↔arquivo e operações
+4. Clique **Revisar** para aprovar ou reprovar o mapeamento
+
+**Artefatos gerados em** `workspace/{Projeto}/runs/run_{id}/step_3/`:
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `detected-tables.json` | Tabelas detectadas com score de confiança e evidências |
+| `table-file-relations.json` | Mapeamento tabela → arquivos onde é referenciada |
+| `file-table-relations.json` | Mapeamento arquivo → tabelas que referencia |
+| `table-operations.json` | Operações detectadas por tabela (SELECT, INSERT, UPDATE...) |
+| `data-mapping-summary.md` | Resumo executivo do mapeamento de dados |
+
 ---
 
 ## Entidades principais
@@ -107,15 +126,18 @@ src/
 | `PipelineStepExecution` | Execução de uma etapa específica do workflow |
 | `ScannedFile` | Arquivo descoberto na varredura estrutural |
 | `Artifact` | Artefato gerado em disco, vinculado à run |
+| `DetectedTable` | Tabela detectada por heurística na Etapa 3 |
+| `TableFileRelation` | Relação entre tabela detectada e arquivo onde é referenciada |
 
 ---
 
 ## Migrations
 
 | Migration | Descrição |
-|-----------|-----------|
+|-----------|----------|
 | `InitialCreate` | Estrutura base: Project, PipelineRun, StepExecution, Artifact |
 | `AddStep2Entities` | ProjectScanSettings, ScannedFile, campos de revisão humana |
+| `AddDataMappingEntities` | DetectedTable, TableFileRelation para Etapa 3 |
 
 ---
 
