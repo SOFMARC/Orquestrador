@@ -16,6 +16,8 @@ public class OrchestratorDbContext : DbContext
     public DbSet<PipelineStepExecution> PipelineStepExecutions => Set<PipelineStepExecution>();
     public DbSet<Artifact> Artifacts => Set<Artifact>();
     public DbSet<ScannedFile> ScannedFiles => Set<ScannedFile>();
+    public DbSet<DetectedTable> DetectedTables => Set<DetectedTable>();
+    public DbSet<TableFileRelation> TableFileRelations => Set<TableFileRelation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
