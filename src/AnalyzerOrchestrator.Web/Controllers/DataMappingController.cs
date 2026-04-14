@@ -1,5 +1,6 @@
 using AnalyzerOrchestrator.Application.DTOs.Extraction;
 using AnalyzerOrchestrator.Application.Interfaces;
+using AnalyzerOrchestrator.Application.Workflow;
 using AnalyzerOrchestrator.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,7 +30,7 @@ public class DataMappingController : Controller
         if (run is null) return NotFound();
 
         // Verificar se já foi executada e está em revisão/aprovada
-        var step = run.StepExecutions.FirstOrDefault(s => s.StepNumber == 3);
+        var step = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepDataMapping);
         if (step is not null &&
             step.Status is not (StepStatus.Pending or StepStatus.Rejected or StepStatus.Failed))
         {
@@ -71,7 +72,7 @@ public class DataMappingController : Controller
             return RedirectToAction(nameof(Execute), new { id });
         }
 
-        var step = run.StepExecutions.FirstOrDefault(s => s.StepNumber == 3);
+        var step = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepDataMapping);
         ViewBag.Run = run;
         ViewBag.Step = step;
         return View(result);

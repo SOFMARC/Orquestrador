@@ -24,22 +24,32 @@
         <div class="alert alert-light border">
             <div class="row text-center">
                 <div class="col">
-                    <div class="fw-bold text-info fs-4">@step?.FilesFound</div>
+                    <div class="fw-bold text-info fs-4">@(step?.FilesFound ?? 0)</div>
                     <small class="text-muted">Arquivos Analisados</small>
                 </div>
                 <div class="col">
-                    <div class="fw-bold text-primary fs-4">@(step?.Notes?.Split(' ').ElementAtOrDefault(3) ?? "—")</div>
+                    <div class="fw-bold text-primary fs-4">@(step?.TablesCount ?? 0)</div>
                     <small class="text-muted">Tabelas Detectadas</small>
+                </div>
+                <div class="col">
+                    <div class="fw-bold text-secondary fs-4">@(step?.RelationsCount ?? 0)</div>
+                    <small class="text-muted">Relações</small>
                 </div>
                 <div class="col">
                     <div class="fw-bold @(step?.ErrorCount > 0 ? "text-danger" : "text-success") fs-4">@(step?.ErrorCount ?? 0)</div>
                     <small class="text-muted">Erros</small>
                 </div>
             </div>
-            @if (!string.IsNullOrEmpty(step?.Notes))
+            @if (step?.Duration.HasValue == true)
             {
                 <hr />
-                <p class="mb-0 small text-muted"><i class="bi bi-info-circle me-1"></i>@step.Notes</p>
+                <p class="mb-0 small text-muted">
+                    <i class="bi bi-clock me-1"></i>Duração: @step.Duration.Value.TotalSeconds.ToString("F1")s
+                    @if (!string.IsNullOrEmpty(step.Notes))
+                    {
+                        <span class="ms-3"><i class="bi bi-info-circle me-1"></i>@step.Notes</span>
+                    }
+                </p>
             }
         </div>
 

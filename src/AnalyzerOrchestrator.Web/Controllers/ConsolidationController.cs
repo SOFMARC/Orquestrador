@@ -1,6 +1,7 @@
 using AnalyzerOrchestrator.Application.DTOs.Consolidation;
 using AnalyzerOrchestrator.Application.DTOs.Extraction;
 using AnalyzerOrchestrator.Application.Interfaces;
+using AnalyzerOrchestrator.Application.Workflow;
 using AnalyzerOrchestrator.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,8 +37,8 @@ public class ConsolidationController : Controller
             return NotFound();
 
         // Verificar se a Etapa 1 está aprovada
-        var step1 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == 1);
-        var step2 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == 2);
+        var step1 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepStructuralExtraction);
+        var step2 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepArchitecturalConsolidation);
 
         if (step1 is null || step1.Status != StepStatus.Approved)
         {
@@ -103,7 +104,7 @@ public class ConsolidationController : Controller
             return RedirectToAction("Details", "PipelineRuns", new { id = runId });
         }
 
-        var step2 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == 2);
+        var step2 = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepArchitecturalConsolidation);
 
         ViewBag.Run = run;
         ViewBag.Step2 = step2;

@@ -1,5 +1,6 @@
 using AnalyzerOrchestrator.Application.DTOs.Extraction;
 using AnalyzerOrchestrator.Application.Interfaces;
+using AnalyzerOrchestrator.Application.Workflow;
 using AnalyzerOrchestrator.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,7 +27,7 @@ public class ExtractionController : Controller
         if (run is null) return NotFound();
 
         // Verificar se a etapa já foi executada
-        var step = run.StepExecutions.FirstOrDefault(s => s.StepNumber == 1);
+        var step = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepStructuralExtraction);
         if (step is not null && step.Status != StepStatus.Pending && step.Status != StepStatus.Rejected)
         {
             TempData["Info"] = "A etapa de Extração Estrutural já foi executada. Veja os resultados abaixo.";
@@ -76,7 +77,7 @@ public class ExtractionController : Controller
         var result = await _extractionService.GetResultAsync(id);
 
         ViewBag.Run = run;
-        ViewBag.Step = run.StepExecutions.FirstOrDefault(s => s.StepNumber == 1);
+        ViewBag.Step = run.StepExecutions.FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepStructuralExtraction);
         return View(result);
     }
 
