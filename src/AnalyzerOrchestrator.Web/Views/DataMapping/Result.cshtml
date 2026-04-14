@@ -1,0 +1,307 @@
+@model AnalyzerOrchestrator.Application.DTOs.DataMapping.DataMappingResultDto
+@using AnalyzerOrchestrator.Domain.Enums
+@{
+    var run = ViewBag.Run as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineRunDto;
+    var step = ViewBag.Step as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineStepExecutionDto;
+    ViewData["Title"] = "Resultado — Mapeamento de Dados";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Details" asp-route-id="@run?.ProjectId">@run?.ProjectName</a></li>
+        <li class="breadcrumb-item"><a asp-controller="PipelineRuns" asp-action="Details" asp-route-id="@run?.Id">Run #@run?.Id</a></li>
+        <li class="breadcrumb-item active">Mapeamento de Dados</li>
+    </ol>
+</nav>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@* Barra de ações *@
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-table me-2 text-info"></i>Etapa 3 — Mapeamento Inicial de Dados</h4>
+    <div class="d-flex gap-2">
+        @if (step?.CanBeReviewed == true)
+        {
+            <a asp-controller="DataMapping" asp-action="Review"
+               asp-route-id="@step.Id" asp-route-runId="@run?.Id"
+               class="btn btn-warning">
+                <i class="bi bi-clipboard-check me-1"></i>Revisar
+            </a>
+        }
+        @if (step?.CanBeExecuted == true)
+        {
+            <a asp-controller="DataMapping" asp-action="Execute" asp-route-id="@run?.Id" class="btn btn-info text-white">
+                <i class="bi bi-arrow-clockwise me-1"></i>Re-executar
+            </a>
+        }
+        <a asp-controller="PipelineRuns" asp-action="Details" asp-route-id="@run?.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+</div>
+
+@* Status da revisão *@
+@if (step?.Status == StepStatus.Approved)
+{
+    <div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i>
+        Aprovada por <strong>@(step.ReviewedBy ?? "revisor")</strong> em @step.ReviewedAt?.ToString("dd/MM/yyyy HH:mm")
+        @if (!string.IsNullOrEmpty(step.ReviewNotes)) { <span>— @step.ReviewNotes</span> }
+    </div>
+}
+else if (step?.Status == StepStatus.Rejected)
+{
+    <div class="alert alert-danger"><i class="bi bi-x-circle-fill me-2"></i>
+        Reprovada. @step.ReviewNotes
+    </div>
+}
+else if (step?.Status == StepStatus.AwaitingReview)
+{
+    <div class="alert alert-warning"><i class="bi bi-hourglass-split me-2"></i>Aguardando revisão humana.</div>
+}
+
+@* Cards de métricas *@
+<div class="row g-3 mb-4">
+    <div class="col-sm-3">
+        <div class="card text-center border-info">
+            <div class="card-body py-3">
+                <div class="fs-2 fw-bold text-info">@Model.TablesCount</div>
+                <div class="text-muted small">Tabelas Detectadas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="card text-center border-primary">
+            <div class="card-body py-3">
+                <div class="fs-2 fw-bold text-primary">@Model.FilesAnalyzed</div>
+                <div class="text-muted small">Arquivos Analisados</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="card text-center border-success">
+            <div class="card-body py-3">
+                <div class="fs-2 fw-bold text-success">@Model.RelationsCount</div>
+                <div class="text-muted small">Relações Encontradas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="card text-center @(Model.ErrorCount > 0 ? "border-danger" : "border-secondary")">
+            <div class="card-body py-3">
+                <div class="fs-2 fw-bold @(Model.ErrorCount > 0 ? "text-danger" : "text-secondary")">@Model.ErrorCount</div>
+                <div class="text-muted small">Erros/Ambiguidades</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Tabelas detectadas *@
+@{
+    var fileTableMap = Model.Tables
+        .SelectMany(t => t.FileRelations.Select(r => new { r.RelativeFilePath, r.FileName, r.FileRole, TableName = t.TableName, t.ConfidenceScore }))
+        .GroupBy(x => x.RelativeFilePath)
+        .OrderByDescending(g => g.Count())
+        .Take(20)
+        .ToList();
+}
+@if (Model.Tables.Any())
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-database me-2"></i>Tabelas Detectadas (@Model.TablesCount)</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tabela</th>
+                            <th>Confiança</th>
+                            <th>Arquivos</th>
+                            <th>Ocorrências</th>
+                            <th>Operações</th>
+                            <th>Indício</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var table in Model.Tables)
+                        {
+                            <tr>
+                                <td><strong>@table.TableName</strong>
+                                    @if (table.OriginalName != table.TableName)
+                                    {
+                                        <small class="text-muted ms-1">(@table.OriginalName)</small>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-@table.ConfidenceBadgeClass">
+                                        @table.ConfidenceScore% @table.ConfidenceLabel
+                                    </span>
+                                </td>
+                                <td>@table.FileCount</td>
+                                <td>@table.OccurrenceCount</td>
+                                <td>
+                                    @foreach (var op in table.Operations.Take(3))
+                                    {
+                                        <span class="badge bg-light text-dark border me-1">@op</span>
+                                    }
+                                </td>
+                                <td><small class="text-muted">@table.EvidenceType</small></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#table-@table.Id">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="table-@table.Id">
+                                <td colspan="7" class="bg-light">
+                                    @if (table.Notes != null)
+                                    {
+                                        <p class="mb-2 small text-muted"><i class="bi bi-info-circle me-1"></i>@table.Notes</p>
+                                    }
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead><tr><th>Arquivo</th><th>Papel</th><th>Ocorrências</th><th>Operação</th><th>Indício</th><th>Contexto</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var rel in table.FileRelations)
+                                            {
+                                                <tr>
+                                                    <td><code class="small">@rel.RelativeFilePath</code></td>
+                                                    <td><span class="badge bg-secondary">@rel.FileRole</span></td>
+                                                    <td>@rel.OccurrenceCount</td>
+                                                    <td>@rel.PrimaryOperation</td>
+                                                    <td><small>@rel.EvidenceType</small></td>
+                                                    <td>
+                                                        @if (!string.IsNullOrEmpty(rel.ContextSnippet))
+                                                        {
+                                                            <small class="text-muted font-monospace" style="font-size:0.7rem">
+                                                                @(rel.ContextSnippet.Length > 120 ? rel.ContextSnippet[..120] + "…" : rel.ContextSnippet)
+                                                            </small>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @* Visão arquivo → tabelas *@
+    @if (fileTableMap.Any())
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Arquivos com Mais Referências a Tabelas (top 20)</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr><th>Arquivo</th><th>Papel</th><th>Tabelas Referenciadas</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in fileTableMap)
+                            {
+                                <tr>
+                                    <td><code class="small">@g.Key</code></td>
+                                    <td><span class="badge bg-secondary">@g.First().FileRole</span></td>
+                                    <td>
+                                        @foreach (var t in g.OrderByDescending(x => x.ConfidenceScore))
+                                        {
+                                            <span class="badge bg-info text-dark me-1">@t.TableName</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Nenhuma tabela foi detectada com confiança suficiente. Verifique as configurações de scan e os arquivos disponíveis.
+    </div>
+}
+
+@* Artefatos gerados *@
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-folder2-open me-2"></i>Artefatos Gerados</h6>
+    </div>
+    <ul class="list-group list-group-flush">
+        @if (!string.IsNullOrEmpty(Model.DetectedTablesPath))
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-code me-2 text-primary"></i><code>detected-tables.json</code></span>
+                <small class="text-muted font-monospace">@Model.DetectedTablesPath</small>
+            </li>
+        }
+        @if (!string.IsNullOrEmpty(Model.TableFileRelationsPath))
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-code me-2 text-primary"></i><code>table-file-relations.json</code></span>
+                <small class="text-muted font-monospace">@Model.TableFileRelationsPath</small>
+            </li>
+        }
+        @if (!string.IsNullOrEmpty(Model.FileTableRelationsPath))
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-code me-2 text-primary"></i><code>file-table-relations.json</code></span>
+                <small class="text-muted font-monospace">@Model.FileTableRelationsPath</small>
+            </li>
+        }
+        @if (!string.IsNullOrEmpty(Model.TableOperationsPath))
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-code me-2 text-primary"></i><code>table-operations.json</code></span>
+                <small class="text-muted font-monospace">@Model.TableOperationsPath</small>
+            </li>
+        }
+        @if (!string.IsNullOrEmpty(Model.DataMappingSummaryPath))
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-text me-2 text-success"></i><code>data-mapping-summary.md</code></span>
+                <small class="text-muted font-monospace">@Model.DataMappingSummaryPath</small>
+            </li>
+        }
+    </ul>
+</div>
+
+@* Summary inline *@
+@if (!string.IsNullOrEmpty(Model.SummaryContent))
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between">
+            <h6 class="mb-0"><i class="bi bi-markdown me-2"></i>data-mapping-summary.md</h6>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#summaryContent">
+                <i class="bi bi-eye"></i> Ver/Ocultar
+            </button>
+        </div>
+        <div class="collapse show" id="summaryContent">
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded" style="font-size:0.8rem;max-height:400px;overflow-y:auto;">@Model.SummaryContent</pre>
+            </div>
+        </div>
+    </div>
+}

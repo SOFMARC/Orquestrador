@@ -204,6 +204,46 @@ else
                                 </a>
                             }
                         }
+
+                        @* Botões de ação para Etapa 3 — Mapeamento Inicial de Dados *@
+                        @if (step.StepNumber == 3)
+                        {
+                            var step1StatusDM = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.Status;
+                            var step1ApprovedDM = step1StatusDM == StepStatus.Approved;
+
+                            if (step.CanBeExecuted && step1ApprovedDM)
+                            {
+                                <a asp-controller="DataMapping" asp-action="Execute" asp-route-id="@Model.Id"
+                                   class="btn btn-sm btn-info text-white">
+                                    <i class="bi bi-table me-1"></i>Executar
+                                </a>
+                            }
+                            else if (step.CanBeExecuted && !step1ApprovedDM)
+                            {
+                                <span class="btn btn-sm btn-outline-secondary disabled" title="Aguardando aprovação da Etapa 1">
+                                    <i class="bi bi-lock me-1"></i>Aguardando Etapa 1
+                                </span>
+                            }
+                            else if (step.CanBeReviewed)
+                            {
+                                <a asp-controller="DataMapping" asp-action="Review"
+                                   asp-route-id="@step.Id" asp-route-runId="@Model.Id"
+                                   class="btn btn-sm btn-warning">
+                                    <i class="bi bi-clipboard-check me-1"></i>Revisar
+                                </a>
+                                <a asp-controller="DataMapping" asp-action="Result" asp-route-id="@Model.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye me-1"></i>Ver Resultado
+                                </a>
+                            }
+                            else if (step.IsExecuted)
+                            {
+                                <a asp-controller="DataMapping" asp-action="Result" asp-route-id="@Model.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye me-1"></i>Ver Resultado
+                                </a>
+                            }
+                        }
                     </div>
                 </div>
 

@@ -1,0 +1,76 @@
+@{
+    var run = ViewBag.Run as AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineRunDto;
+    ViewData["Title"] = "Executar Mapeamento de Dados";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Details" asp-route-id="@run?.ProjectId">@run?.ProjectName</a></li>
+        <li class="breadcrumb-item"><a asp-controller="PipelineRuns" asp-action="Details" asp-route-id="@run?.Id">Run #@run?.Id</a></li>
+        <li class="breadcrumb-item active">Mapeamento de Dados</li>
+    </ol>
+</nav>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="bi bi-table me-2"></i>Etapa 3 — Mapeamento Inicial de Dados</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">
+            Esta etapa analisa os arquivos escaneados e detecta tabelas e estruturas de dados por heurística,
+            gerando mapeamentos rastreáveis entre tabelas e arquivos.
+        </p>
+
+        <div class="alert alert-info">
+            <strong>Projeto:</strong> @run?.ProjectName &nbsp;|&nbsp;
+            <strong>Run:</strong> #@run?.Id &nbsp;|&nbsp;
+            <strong>Status:</strong> @run?.StatusLabel
+        </div>
+
+        <h6 class="mt-3">Artefatos que serão gerados:</h6>
+        <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item"><i class="bi bi-file-earmark-code me-2 text-primary"></i><code>detected-tables.json</code> — tabelas detectadas com nível de confiança</li>
+            <li class="list-group-item"><i class="bi bi-file-earmark-code me-2 text-primary"></i><code>table-file-relations.json</code> — mapeamento tabela → arquivos</li>
+            <li class="list-group-item"><i class="bi bi-file-earmark-code me-2 text-primary"></i><code>file-table-relations.json</code> — mapeamento arquivo → tabelas</li>
+            <li class="list-group-item"><i class="bi bi-file-earmark-code me-2 text-primary"></i><code>table-operations.json</code> — operações detectadas por tabela</li>
+            <li class="list-group-item"><i class="bi bi-file-earmark-text me-2 text-success"></i><code>data-mapping-summary.md</code> — resumo executivo para revisão</li>
+        </ul>
+
+        <div class="alert alert-warning">
+            <i class="bi bi-info-circle me-2"></i>
+            A detecção é baseada em heurísticas (padrões SQL, convenções ORM, nomes de classes).
+            Os resultados devem ser revisados antes de serem usados como referência definitiva.
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between">
+        <a asp-controller="PipelineRuns" asp-action="Details" asp-route-id="@run?.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+        <form method="post" id="executeForm">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-info text-white" id="executeBtn" onclick="startExecution()">
+                <i class="bi bi-play-fill me-1"></i>Executar Mapeamento
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function startExecution() {
+            const btn = document.getElementById('executeBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analisando arquivos...';
+            document.getElementById('executeForm').submit();
+        }
+    </script>
+}
