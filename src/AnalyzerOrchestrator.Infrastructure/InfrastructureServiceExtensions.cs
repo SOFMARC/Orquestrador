@@ -25,6 +25,7 @@ public static class InfrastructureServiceExtensions
 
         // Serviços de infraestrutura (acesso a disco)
         services.AddScoped<IStructuralExtractionService, StructuralExtractionService>();
+        services.AddScoped<IArchitecturalConsolidationService, ArchitecturalConsolidationService>();
 
         return services;
     }
