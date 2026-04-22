@@ -1,4 +1,5 @@
 @using AnalyzerOrchestrator.Domain.Enums
+@using AnalyzerOrchestrator.Application.Workflow
 @model AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineRunDto
 @{
     ViewData["Title"] = $"Run #{Model.Id}";
@@ -31,6 +32,13 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
+@if (TempData["Warning"] is string warning)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @warning
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 @if (TempData["Error"] is string error)
 {
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -48,10 +56,10 @@
         var badgeClass = Model.Status switch
         {
             RunStatus.Completed => "bg-success",
-            RunStatus.Running => "bg-primary",
-            RunStatus.Failed => "bg-danger",
+            RunStatus.Running   => "bg-primary",
+            RunStatus.Failed    => "bg-danger",
             RunStatus.Cancelled => "bg-secondary",
-            _ => "bg-warning text-dark"
+            _                   => "bg-warning text-dark"
         };
     }
     <span class="badge @badgeClass fs-6">@Model.StatusLabel</span>
@@ -111,19 +119,24 @@
 }
 else
 {
+    @* Pré-calcular status da Etapa 1 uma única vez para uso nos blocos abaixo *@
+    var step1Status = Model.StepExecutions
+        .FirstOrDefault(s => s.StepNumber == DefaultAnalysisWorkflow.StepStructuralExtraction)?.Status;
+    var step1Approved = step1Status == StepStatus.Approved;
+
     <div class="list-group mb-4">
         @foreach (var step in Model.StepExecutions)
         {
             var stepBadge = step.Status switch
             {
                 StepStatus.Completed or StepStatus.Approved => "bg-success",
-                StepStatus.Running => "bg-primary",
-                StepStatus.Failed => "bg-danger",
-                StepStatus.Skipped => "bg-secondary",
-                StepStatus.Rejected => "bg-danger",
-                StepStatus.AwaitingReview => "bg-warning text-dark",
-                StepStatus.Executed => "bg-info",
-                _ => "bg-light text-dark border"
+                StepStatus.Running                          => "bg-primary",
+                StepStatus.Failed                           => "bg-danger",
+                StepStatus.Skipped                          => "bg-secondary",
+                StepStatus.Rejected                         => "bg-danger",
+                StepStatus.AwaitingReview                   => "bg-warning text-dark",
+                StepStatus.Executed                         => "bg-info",
+                _                                           => "bg-light text-dark border"
             };
             <div class="list-group-item">
                 <div class="d-flex justify-content-between align-items-center">
@@ -134,8 +147,8 @@ else
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge @stepBadge">@step.StatusLabel</span>
 
-                        @* Botão de ação para Etapa 1 — Extração Estrutural *@
-                        @if (step.StepNumber == 1)
+                        @* ── Etapa 1 — Extração Estrutural ──────────────────────────────── *@
+                        @if (step.StepNumber == DefaultAnalysisWorkflow.StepStructuralExtraction)
                         {
                             if (step.CanBeExecuted)
                             {
@@ -165,13 +178,9 @@ else
                             }
                         }
 
-                        @* Botões de ação para Etapa 2 — Consolidação Arquitetural *@
-                        @if (step.StepNumber == 2)
+                        @* ── Etapa 2 — Consolidação Arquitetural ────────────────────────── *@
+                        @if (step.StepNumber == DefaultAnalysisWorkflow.StepArchitecturalConsolidation)
                         {
-                            @* Verificar se Etapa 1 está aprovada para habilitar execução *@
-                            var step1Status = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.Status;
-                            var step1Approved = step1Status == StepStatus.Approved;
-
                             if (step.CanBeExecuted && step1Approved)
                             {
                                 <a asp-controller="Consolidation" asp-action="Execute" asp-route-runId="@Model.Id"
@@ -181,7 +190,8 @@ else
                             }
                             else if (step.CanBeExecuted && !step1Approved)
                             {
-                                <span class="btn btn-sm btn-outline-secondary disabled" title="Aguardando aprovação da Etapa 1">
+                                <span class="btn btn-sm btn-outline-secondary disabled"
+                                      title="Aguardando aprovação da Etapa 1 — Extração Estrutural">
                                     <i class="bi bi-lock me-1"></i>Aguardando Etapa 1
                                 </span>
                             }
@@ -205,22 +215,20 @@ else
                             }
                         }
 
-                        @* Botões de ação para Etapa 3 — Mapeamento Inicial de Dados *@
-                        @if (step.StepNumber == 3)
+                        @* ── Etapa 3 — Mapeamento Inicial de Dados ──────────────────────── *@
+                        @if (step.StepNumber == DefaultAnalysisWorkflow.StepDataMapping)
                         {
-                            var step1StatusDM = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.Status;
-                            var step1ApprovedDM = step1StatusDM == StepStatus.Approved;
-
-                            if (step.CanBeExecuted && step1ApprovedDM)
+                            if (step.CanBeExecuted && step1Approved)
                             {
                                 <a asp-controller="DataMapping" asp-action="Execute" asp-route-id="@Model.Id"
                                    class="btn btn-sm btn-info text-white">
                                     <i class="bi bi-table me-1"></i>Executar
                                 </a>
                             }
-                            else if (step.CanBeExecuted && !step1ApprovedDM)
+                            else if (step.CanBeExecuted && !step1Approved)
                             {
-                                <span class="btn btn-sm btn-outline-secondary disabled" title="Aguardando aprovação da Etapa 1">
+                                <span class="btn btn-sm btn-outline-secondary disabled"
+                                      title="Aguardando aprovação da Etapa 1 — Extração Estrutural">
                                     <i class="bi bi-lock me-1"></i>Aguardando Etapa 1
                                 </span>
                             }
@@ -244,6 +252,15 @@ else
                                 </a>
                             }
                         }
+
+                        @* ── Etapas futuras (4 e 5) — exibir apenas status ──────────────── *@
+                        @if (step.StepNumber == DefaultAnalysisWorkflow.StepStructuredRequirement
+                          || step.StepNumber == DefaultAnalysisWorkflow.StepContextPreparation)
+                        {
+                            <span class="badge bg-light text-muted border" title="Etapa ainda não implementada">
+                                Em breve
+                            </span>
+                        }
                     </div>
                 </div>
 
@@ -256,7 +273,7 @@ else
                     <small class="text-danger d-block mt-1"><strong>Erro:</strong> @step.ErrorMessage</small>
                 }
 
-                @* Métricas de execução *@
+                @* Métricas de execução — Etapa 1 *@
                 @if (step.FilesFound.HasValue)
                 {
                     <small class="text-muted d-block mt-1">
@@ -269,7 +286,25 @@ else
                     </small>
                 }
 
-                @* Revisão *@
+                @* Métricas de execução — Etapa 2 *@
+                @if (step.ModulesCount.HasValue)
+                {
+                    <small class="text-muted d-block mt-1">
+                        <i class="bi bi-diagram-3 me-1"></i>
+                        @step.ModulesCount módulos · @step.LayersCount camadas · @step.CentralFilesCount arquivos centrais
+                    </small>
+                }
+
+                @* Métricas de execução — Etapa 3 *@
+                @if (step.TablesCount.HasValue)
+                {
+                    <small class="text-muted d-block mt-1">
+                        <i class="bi bi-table me-1"></i>
+                        @step.TablesCount tabelas detectadas · @step.RelationsCount relações
+                    </small>
+                }
+
+                @* Revisão humana *@
                 @if (step.ReviewedAt.HasValue)
                 {
                     <small class="text-muted d-block mt-1">
@@ -292,6 +327,10 @@ else
                         @if (step.FinishedAt.HasValue)
                         {
                             <span class="ms-2">Fim: @step.FinishedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
+                        }
+                        @if (step.Duration.HasValue)
+                        {
+                            <span class="ms-2 text-secondary">(@step.Duration.Value.ToString(@"mm\:ss"))</span>
                         }
                     </small>
                 }
