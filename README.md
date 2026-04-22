@@ -52,8 +52,10 @@ src/
 | 1 | Extração Estrutural | ✅ Implementado | Varredura real do diretório, inventário, árvore, classificação de arquivos |
 | 2 | Consolidação Arquitetural | ✅ Implementado | Agrupamento por módulos/camadas, arquivos centrais, resumo arquitetural |
 | 3 | Mapeamento Inicial de Dados | ✅ Implementado | Detecção de tabelas por heurística, relações tabela↔arquivo, operações detectadas |
-| 4 | Análise de Dependências | 🔜 Próxima etapa | Levantamento de pacotes, dependências externas e integrações |
-| 5 | Preparação do Contexto | 🔜 Futuro | Consolidação final para uso com IA |
+| 4 | Requisito Estruturado e Impacto Inicial | 🔜 Próxima etapa | Levantamento de requisitos estruturados e análise de impacto inicial |
+| 5 | Preparação do Contexto | 🔜 Futuro | Consolidação final de todos os artefatos para uso com IA |
+
+> As constantes de número de etapa estão centralizadas em `DefaultAnalysisWorkflow` — nunca use literais numéricos no código.
 
 ---
 
@@ -67,7 +69,7 @@ src/
 4. Na tela de detalhes do Run, clique **Executar** na Etapa 1
 5. Revise o resultado e clique **Revisar** para aprovar ou reprovar
 
-**Artefatos gerados em** `workspace/{Projeto}/runs/run_{id}/step_1/`:
+**Artefatos gerados em** (Windows) `%APPDATA%\AnalyzerOrchestrator\workspace\{Projeto}\runs\run_{id}\step_1\`:
 
 | Arquivo | Conteúdo |
 |---------|----------|
@@ -85,7 +87,7 @@ src/
 3. Visualize o resultado: módulos, camadas, arquivos centrais, observações
 4. Clique **Revisar** para aprovar ou reprovar a consolidação
 
-**Artefatos gerados em** `workspace/{Projeto}/runs/run_{id}/step_2/`:
+**Artefatos gerados em** (Windows) `%APPDATA%\AnalyzerOrchestrator\workspace\{Projeto}\runs\run_{id}\step_2\`:
 
 | Arquivo | Conteúdo |
 |---------|----------|
@@ -97,14 +99,14 @@ src/
 
 ### Etapa 3 — Mapeamento Inicial de Dados
 
-> Requer que a Etapa 1 esteja **aprovada**.
+> Requer que a Etapa 1 esteja **aprovada**. Pode ser executada em paralelo com a Etapa 2.
 
 1. Na tela de detalhes do Run, clique **Executar** na Etapa 3
-2. Aguarde a análise dos arquivos por heurística
+2. Aguarde a análise dos arquivos por heurística (SQL, ORM, convenção de nomes)
 3. Visualize o resultado: tabelas detectadas com nível de confiança, relações tabela↔arquivo e operações
 4. Clique **Revisar** para aprovar ou reprovar o mapeamento
 
-**Artefatos gerados em** `workspace/{Projeto}/runs/run_{id}/step_3/`:
+**Artefatos gerados em** (Windows) `%APPDATA%\AnalyzerOrchestrator\workspace\{Projeto}\runs\run_{id}\step_3\`:
 
 | Arquivo | Conteúdo |
 |---------|----------|
@@ -113,6 +115,8 @@ src/
 | `file-table-relations.json` | Mapeamento arquivo → tabelas que referencia |
 | `table-operations.json` | Operações detectadas por tabela (SELECT, INSERT, UPDATE...) |
 | `data-mapping-summary.md` | Resumo executivo do mapeamento de dados |
+
+> **Linux/macOS:** os artefatos são salvos em `~/.analyzer-orchestrator/workspace/{Projeto}/runs/run_{id}/step_{n}/`.
 
 ---
 
@@ -125,7 +129,7 @@ src/
 | `PipelineRun` | Execução de análise vinculada a um projeto |
 | `PipelineStepExecution` | Execução de uma etapa específica do workflow |
 | `ScannedFile` | Arquivo descoberto na varredura estrutural |
-| `Artifact` | Artefato gerado em disco, vinculado à run |
+| `Artifact` | Artefato gerado em disco, vinculado à run e à etapa (`StepNumber`) |
 | `DetectedTable` | Tabela detectada por heurística na Etapa 3 |
 | `TableFileRelation` | Relação entre tabela detectada e arquivo onde é referenciada |
 
@@ -138,6 +142,7 @@ src/
 | `InitialCreate` | Estrutura base: Project, PipelineRun, StepExecution, Artifact |
 | `AddStep2Entities` | ProjectScanSettings, ScannedFile, campos de revisão humana |
 | `AddDataMappingEntities` | DetectedTable, TableFileRelation para Etapa 3 |
+| `StabilizationMetrics` | Campos explícitos de métricas por etapa (`FilesFound`, `TablesCount`, `ModulesCount`…) e `StepNumber` em Artifact |
 
 ---
 
@@ -145,9 +150,10 @@ src/
 
 - **SQLite** zero-config para uso local. O arquivo `orchestrator.db` fica na pasta do projeto Web.
 - **Migrations automáticas** na inicialização simplificam o setup sem comandos adicionais.
-- **Workflow definido em código** (`DefaultAnalysisWorkflow`) centraliza as etapas, permitindo evolução sem alterar o banco.
-- **Arquitetura em camadas** garante separação clara de responsabilidades.
-- **Serviços de disco na Infrastructure** — `StructuralExtractionService` e `ArchitecturalConsolidationService` acessam o sistema de arquivos e são registrados na camada Infrastructure.
+- **Workflow definido em código** (`DefaultAnalysisWorkflow`) centraliza as etapas com constantes nomeadas — nunca use literais numéricos para referenciar etapas.
+- **Artefatos em AppData** — no Windows os artefatos são salvos em `%APPDATA%\AnalyzerOrchestrator\workspace\`; no Linux/macOS em `~/.analyzer-orchestrator/workspace\`. O banco SQLite registra o caminho de cada artefato na tabela `Artifacts`.
+- **Arquitetura em camadas** — Domain sem dependências externas, Application sem acesso a disco, Infrastructure com EF Core e acesso ao sistema de arquivos.
+- **Métricas explícitas** — `PipelineStepExecution` possui campos tipados por etapa (`FilesFound`, `ModulesCount`, `TablesCount`…); nunca parse o campo `Notes` para extrair métricas.
 
 ---
 
