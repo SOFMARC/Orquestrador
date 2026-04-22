@@ -731,6 +731,9 @@ public class ArchitecturalConsolidationService : IArchitecturalConsolidationServ
     private static string GetWorkspacePath(string projectName, int runId)
     {
         var safeName = string.Concat(projectName.Split(Path.GetInvalidFileNameChars()));
-        return Path.Combine("workspace", safeName, "runs", $"run_{runId}", "step_2");
+        var basePath = Environment.OSVersion.Platform == PlatformID.Win32NT
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AnalyzerOrchestrator", "workspace")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".analyzer-orchestrator", "workspace");
+        return Path.Combine(basePath, safeName, "runs", $"run_{runId}", "step_2");
     }
 }
