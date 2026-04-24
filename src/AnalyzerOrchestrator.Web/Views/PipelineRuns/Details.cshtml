@@ -1,9 +1,14 @@
 @using AnalyzerOrchestrator.Domain.Enums
 @model AnalyzerOrchestrator.Application.DTOs.PipelineRuns.PipelineRunDto
 @{
-    ViewData["Title"] = $"Run #{Model.Id}";
-}
+    ViewData["Title"] = $"Análise #{Model.Id}";
 
+    // Detecta se é uma run legada (workflow v1) ou nova (workflow v2).
+    // Runs legadas têm step 1 com nome "Extração Estrutural".
+    // Runs novas têm step 1 com nome "Extração do sistema".
+    var step1Name = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.StepName ?? "";
+    var isLegacyRun = step1Name.Contains("Extração Estrutural") || step1Name.Contains("Structural");
+}
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
@@ -11,12 +16,11 @@
             <a asp-controller="Projects" asp-action="Details" asp-route-id="@Model.ProjectId">@Model.ProjectName</a>
         </li>
         <li class="breadcrumb-item">
-            <a asp-action="ByProject" asp-route-projectId="@Model.ProjectId">Runs</a>
+            <a asp-action="ByProject" asp-route-projectId="@Model.ProjectId">Análises</a>
         </li>
-        <li class="breadcrumb-item active">Run #@Model.Id</li>
+        <li class="breadcrumb-item active">Análise #@Model.Id</li>
     </ol>
 </nav>
-
 @if (TempData["Success"] is string success)
 {
     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -31,6 +35,13 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
+@if (TempData["Warning"] is string warning)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @warning
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 @if (TempData["Error"] is string error)
 {
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -38,10 +49,14 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
-
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
-        <h2>Pipeline Run <span class="text-muted">#@Model.Id</span></h2>
+        <h2>Análise <span class="text-muted">#@Model.Id</span>
+            @if (isLegacyRun)
+            {
+                <span class="badge bg-light text-muted border fs-6 ms-2" title="Criada com o workflow anterior (v1)">legada</span>
+            }
+        </h2>
         <p class="text-muted mb-0">Projeto: <strong>@Model.ProjectName</strong></p>
     </div>
     @{
@@ -56,25 +71,20 @@
     }
     <span class="badge @badgeClass fs-6">@Model.StatusLabel</span>
 </div>
-
 <div class="row g-3 mb-4">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header">Informações do Run</div>
+            <div class="card-header">Informações da Análise</div>
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-sm-5">Origem</dt>
                     <dd class="col-sm-7">@(Model.TriggerSource ?? "—")</dd>
-
                     <dt class="col-sm-5">Etapa Atual</dt>
                     <dd class="col-sm-7">@(Model.CurrentStep ?? "—")</dd>
-
                     <dt class="col-sm-5">Início</dt>
                     <dd class="col-sm-7">@(Model.StartedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</dd>
-
                     <dt class="col-sm-5">Fim</dt>
                     <dd class="col-sm-7">@(Model.FinishedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</dd>
-
                     <dt class="col-sm-5">Criado em</dt>
                     <dd class="col-sm-7">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
                 </dl>
@@ -103,208 +113,328 @@
     </div>
 </div>
 
-<h5 class="mb-3">Etapas do Workflow</h5>
-
-@if (!Model.StepExecutions.Any())
+@* ── Runs Novas (Workflow v2) ──────────────────────────────────────────────── *@
+@if (!isLegacyRun)
 {
-    <div class="alert alert-light border">Nenhuma etapa registrada.</div>
-}
-else
-{
-    <div class="list-group mb-4">
-        @foreach (var step in Model.StepExecutions)
-        {
-            var stepBadge = step.Status switch
+    <h5 class="mb-3">Etapas da Análise</h5>
+    @if (!Model.StepExecutions.Any())
+    {
+        <div class="alert alert-light border">Nenhuma etapa registrada.</div>
+    }
+    else
+    {
+        <div class="list-group mb-4">
+            @foreach (var step in Model.StepExecutions)
             {
-                StepStatus.Completed or StepStatus.Approved => "bg-success",
-                StepStatus.Running => "bg-primary",
-                StepStatus.Failed => "bg-danger",
-                StepStatus.Skipped => "bg-secondary",
-                StepStatus.Rejected => "bg-danger",
-                StepStatus.AwaitingReview => "bg-warning text-dark",
-                StepStatus.Executed => "bg-info",
-                _ => "bg-light text-dark border"
-            };
-            <div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="badge bg-light text-dark border me-2">@step.StepNumber</span>
-                        <strong>@step.StepName</strong>
+                var stepBadge = step.Status switch
+                {
+                    StepStatus.Completed or StepStatus.Approved => "bg-success",
+                    StepStatus.Running => "bg-primary",
+                    StepStatus.Failed => "bg-danger",
+                    StepStatus.Skipped => "bg-secondary",
+                    StepStatus.Rejected => "bg-danger",
+                    StepStatus.AwaitingReview => "bg-warning text-dark",
+                    StepStatus.Executed => "bg-info",
+                    _ => "bg-light text-dark border"
+                };
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-light text-dark border me-2">@step.StepNumber</span>
+                            <strong>@step.StepName</strong>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge @stepBadge">@step.StatusLabel</span>
+
+                            @* Etapa 1 — Extração do sistema (nova, execução unificada) *@
+                            @if (step.StepNumber == 1)
+                            {
+                                if (step.CanBeExecuted)
+                                {
+                                    <a asp-controller="Extraction" asp-action="ExecuteSystem" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-primary">
+                                        <i class="bi bi-play-fill me-1"></i>Executar
+                                    </a>
+                                }
+                                else if (step.CanBeReviewed)
+                                {
+                                    <a asp-controller="Extraction" asp-action="ReviewSystem"
+                                       asp-route-id="@step.Id" asp-route-runId="@Model.Id"
+                                       class="btn btn-sm btn-warning">
+                                        <i class="bi bi-clipboard-check me-1"></i>Revisar
+                                    </a>
+                                    <a asp-controller="Extraction" asp-action="ResultSystem" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>Ver Resultado
+                                    </a>
+                                }
+                                else if (step.IsExecuted)
+                                {
+                                    <a asp-controller="Extraction" asp-action="ResultSystem" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>Ver Resultado
+                                    </a>
+                                }
+                            }
+
+                            @* Etapas 2, 3, 4 — Futuras *@
+                            @if (step.StepNumber >= 2)
+                            {
+                                <span class="badge bg-secondary">Em breve</span>
+                            }
+                        </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge @stepBadge">@step.StatusLabel</span>
-
-                        @* Botão de ação para Etapa 1 — Extração Estrutural *@
-                        @if (step.StepNumber == 1)
-                        {
-                            if (step.CanBeExecuted)
+                    @if (!string.IsNullOrEmpty(step.Notes))
+                    {
+                        <small class="text-muted d-block mt-1">@step.Notes</small>
+                    }
+                    @if (!string.IsNullOrEmpty(step.ErrorMessage))
+                    {
+                        <small class="text-danger d-block mt-1"><strong>Erro:</strong> @step.ErrorMessage</small>
+                    }
+                    @if (step.FilesFound.HasValue)
+                    {
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-files me-1"></i>
+                            @step.FilesFound arquivos encontrados
+                            @if (step.ErrorCount > 0)
                             {
-                                <a asp-controller="Extraction" asp-action="Execute" asp-route-id="@Model.Id"
-                                   class="btn btn-sm btn-primary">
-                                    <i class="bi bi-play-fill me-1"></i>Executar
-                                </a>
+                                <span class="text-danger ms-2">· @step.ErrorCount erros</span>
                             }
-                            else if (step.CanBeReviewed)
+                        </small>
+                    }
+                    @if (step.ReviewedAt.HasValue)
+                    {
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-person-check me-1"></i>
+                            Revisado por @(step.ReviewedBy ?? "anônimo") em @step.ReviewedAt.Value.ToLocalTime().ToString("dd/MM HH:mm")
+                            @if (!string.IsNullOrWhiteSpace(step.ReviewNotes))
                             {
-                                <a asp-controller="Extraction" asp-action="Review"
-                                   asp-route-id="@step.Id" asp-route-runId="@Model.Id"
-                                   class="btn btn-sm btn-warning">
-                                    <i class="bi bi-clipboard-check me-1"></i>Revisar
-                                </a>
-                                <a asp-controller="Extraction" asp-action="Result" asp-route-id="@Model.Id"
-                                   class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-eye me-1"></i>Ver Resultado
-                                </a>
+                                <span class="ms-2">— @step.ReviewNotes</span>
                             }
-                            else if (step.IsExecuted)
+                        </small>
+                    }
+                    @if (step.StartedAt.HasValue || step.FinishedAt.HasValue)
+                    {
+                        <small class="text-muted d-block mt-1">
+                            @if (step.StartedAt.HasValue)
                             {
-                                <a asp-controller="Extraction" asp-action="Result" asp-route-id="@Model.Id"
-                                   class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-eye me-1"></i>Ver Resultado
-                                </a>
+                                <span>Início: @step.StartedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
                             }
-                        }
-
-                        @* Botões de ação para Etapa 2 — Consolidação Arquitetural *@
-                        @if (step.StepNumber == 2)
-                        {
-                            @* Verificar se Etapa 1 está aprovada para habilitar execução *@
-                            var step1Status = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.Status;
-                            var step1Approved = step1Status == StepStatus.Approved;
-
-                            if (step.CanBeExecuted && step1Approved)
+                            @if (step.FinishedAt.HasValue)
                             {
-                                <a asp-controller="Consolidation" asp-action="Execute" asp-route-runId="@Model.Id"
-                                   class="btn btn-sm btn-primary">
-                                    <i class="bi bi-diagram-3 me-1"></i>Executar
-                                </a>
+                                <span class="ms-2">Fim: @step.FinishedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
                             }
-                            else if (step.CanBeExecuted && !step1Approved)
-                            {
-                                <span class="btn btn-sm btn-outline-secondary disabled" title="Aguardando aprovação da Etapa 1">
-                                    <i class="bi bi-lock me-1"></i>Aguardando Etapa 1
-                                </span>
-                            }
-                            else if (step.CanBeReviewed)
-                            {
-                                <a asp-controller="Consolidation" asp-action="Review" asp-route-stepId="@step.Id"
-                                   class="btn btn-sm btn-warning">
-                                    <i class="bi bi-clipboard-check me-1"></i>Revisar
-                                </a>
-                                <a asp-controller="Consolidation" asp-action="Result" asp-route-runId="@Model.Id"
-                                   class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-eye me-1"></i>Ver Resultado
-                                </a>
-                            }
-                            else if (step.IsExecuted)
-                            {
-                                <a asp-controller="Consolidation" asp-action="Result" asp-route-runId="@Model.Id"
-                                   class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-eye me-1"></i>Ver Resultado
-                                </a>
-                            }
-                        }
-
-                        @* Botões de ação para Etapa 3 — Mapeamento Inicial de Dados *@
-                        @if (step.StepNumber == 3)
-                        {
-                            var step1StatusDM = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.Status;
-                            var step1ApprovedDM = step1StatusDM == StepStatus.Approved;
-
-                            if (step.CanBeExecuted && step1ApprovedDM)
-                            {
-                                <a asp-controller="DataMapping" asp-action="Execute" asp-route-id="@Model.Id"
-                                   class="btn btn-sm btn-info text-white">
-                                    <i class="bi bi-table me-1"></i>Executar
-                                </a>
-                            }
-                            else if (step.CanBeExecuted && !step1ApprovedDM)
-                            {
-                                <span class="btn btn-sm btn-outline-secondary disabled" title="Aguardando aprovação da Etapa 1">
-                                    <i class="bi bi-lock me-1"></i>Aguardando Etapa 1
-                                </span>
-                            }
-                            else if (step.CanBeReviewed)
-                            {
-                                <a asp-controller="DataMapping" asp-action="Review"
-                                   asp-route-id="@step.Id" asp-route-runId="@Model.Id"
-                                   class="btn btn-sm btn-warning">
-                                    <i class="bi bi-clipboard-check me-1"></i>Revisar
-                                </a>
-                                <a asp-controller="DataMapping" asp-action="Result" asp-route-id="@Model.Id"
-                                   class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-eye me-1"></i>Ver Resultado
-                                </a>
-                            }
-                            else if (step.IsExecuted)
-                            {
-                                <a asp-controller="DataMapping" asp-action="Result" asp-route-id="@Model.Id"
-                                   class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-eye me-1"></i>Ver Resultado
-                                </a>
-                            }
-                        }
-                    </div>
+                        </small>
+                    }
                 </div>
+            }
+        </div>
+    }
+}
 
-                @if (!string.IsNullOrEmpty(step.Notes))
+@* ── Runs Legadas (Workflow v1) ────────────────────────────────────────────── *@
+@if (isLegacyRun)
+{
+    <h5 class="mb-3">Etapas da Análise <span class="text-muted small fw-normal">(workflow legado)</span></h5>
+    @if (!Model.StepExecutions.Any())
+    {
+        <div class="alert alert-light border">Nenhuma etapa registrada.</div>
+    }
+    else
+    {
+        <div class="list-group mb-4">
+            @foreach (var step in Model.StepExecutions)
+            {
+                var stepBadge = step.Status switch
                 {
-                    <small class="text-muted d-block mt-1">@step.Notes</small>
-                }
-                @if (!string.IsNullOrEmpty(step.ErrorMessage))
-                {
-                    <small class="text-danger d-block mt-1"><strong>Erro:</strong> @step.ErrorMessage</small>
-                }
+                    StepStatus.Completed or StepStatus.Approved => "bg-success",
+                    StepStatus.Running => "bg-primary",
+                    StepStatus.Failed => "bg-danger",
+                    StepStatus.Skipped => "bg-secondary",
+                    StepStatus.Rejected => "bg-danger",
+                    StepStatus.AwaitingReview => "bg-warning text-dark",
+                    StepStatus.Executed => "bg-info",
+                    _ => "bg-light text-dark border"
+                };
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-light text-dark border me-2">@step.StepNumber</span>
+                            <strong>@step.StepName</strong>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge @stepBadge">@step.StatusLabel</span>
 
-                @* Métricas de execução *@
-                @if (step.FilesFound.HasValue)
-                {
-                    <small class="text-muted d-block mt-1">
-                        <i class="bi bi-files me-1"></i>
-                        @step.FilesFound encontrados · @step.FilesIgnored ignorados
-                        @if (step.ErrorCount > 0)
-                        {
-                            <span class="text-danger ms-2">· @step.ErrorCount erros</span>
-                        }
-                    </small>
-                }
+                            @* Etapa 1 — Extração Estrutural (legada) *@
+                            @if (step.StepNumber == 1)
+                            {
+                                if (step.CanBeExecuted)
+                                {
+                                    <a asp-controller="Extraction" asp-action="Execute" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-primary">
+                                        <i class="bi bi-play-fill me-1"></i>Executar
+                                    </a>
+                                }
+                                else if (step.CanBeReviewed)
+                                {
+                                    <a asp-controller="Extraction" asp-action="Review"
+                                       asp-route-id="@step.Id" asp-route-runId="@Model.Id"
+                                       class="btn btn-sm btn-warning">
+                                        <i class="bi bi-clipboard-check me-1"></i>Revisar
+                                    </a>
+                                    <a asp-controller="Extraction" asp-action="Result" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>Ver Resultado
+                                    </a>
+                                }
+                                else if (step.IsExecuted)
+                                {
+                                    <a asp-controller="Extraction" asp-action="Result" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>Ver Resultado
+                                    </a>
+                                }
+                            }
 
-                @* Revisão *@
-                @if (step.ReviewedAt.HasValue)
-                {
-                    <small class="text-muted d-block mt-1">
-                        <i class="bi bi-person-check me-1"></i>
-                        Revisado por @(step.ReviewedBy ?? "anônimo") em @step.ReviewedAt.Value.ToLocalTime().ToString("dd/MM HH:mm")
-                        @if (!string.IsNullOrWhiteSpace(step.ReviewNotes))
-                        {
-                            <span class="ms-2">— @step.ReviewNotes</span>
-                        }
-                    </small>
-                }
+                            @* Etapa 2 — Consolidação Arquitetural (legada) *@
+                            @if (step.StepNumber == 2)
+                            {
+                                var step1StatusLeg = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.Status;
+                                var step1ApprovedLeg = step1StatusLeg == StepStatus.Approved;
+                                if (step.CanBeExecuted && step1ApprovedLeg)
+                                {
+                                    <a asp-controller="Consolidation" asp-action="Execute" asp-route-runId="@Model.Id"
+                                       class="btn btn-sm btn-success">
+                                        <i class="bi bi-diagram-3 me-1"></i>Executar
+                                    </a>
+                                }
+                                else if (step.CanBeExecuted && !step1ApprovedLeg)
+                                {
+                                    <span class="btn btn-sm btn-outline-secondary disabled" title="Aguardando aprovação da Etapa 1">
+                                        <i class="bi bi-lock me-1"></i>Aguardando Etapa 1
+                                    </span>
+                                }
+                                else if (step.CanBeReviewed)
+                                {
+                                    <a asp-controller="Consolidation" asp-action="Review" asp-route-stepId="@step.Id"
+                                       class="btn btn-sm btn-warning">
+                                        <i class="bi bi-clipboard-check me-1"></i>Revisar
+                                    </a>
+                                    <a asp-controller="Consolidation" asp-action="Result" asp-route-runId="@Model.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>Ver Resultado
+                                    </a>
+                                }
+                                else if (step.IsExecuted)
+                                {
+                                    <a asp-controller="Consolidation" asp-action="Result" asp-route-runId="@Model.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>Ver Resultado
+                                    </a>
+                                }
+                            }
 
-                @if (step.StartedAt.HasValue || step.FinishedAt.HasValue)
-                {
-                    <small class="text-muted d-block mt-1">
-                        @if (step.StartedAt.HasValue)
-                        {
-                            <span>Início: @step.StartedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
-                        }
-                        @if (step.FinishedAt.HasValue)
-                        {
-                            <span class="ms-2">Fim: @step.FinishedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
-                        }
-                    </small>
-                }
-            </div>
-        }
-    </div>
+                            @* Etapa 3 — Mapeamento Inicial de Dados (legada) *@
+                            @if (step.StepNumber == 3)
+                            {
+                                var step1StatusDM = Model.StepExecutions.FirstOrDefault(s => s.StepNumber == 1)?.Status;
+                                var step1ApprovedDM = step1StatusDM == StepStatus.Approved;
+                                if (step.CanBeExecuted && step1ApprovedDM)
+                                {
+                                    <a asp-controller="DataMapping" asp-action="Execute" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-info text-white">
+                                        <i class="bi bi-table me-1"></i>Executar
+                                    </a>
+                                }
+                                else if (step.CanBeExecuted && !step1ApprovedDM)
+                                {
+                                    <span class="btn btn-sm btn-outline-secondary disabled" title="Aguardando aprovação da Etapa 1">
+                                        <i class="bi bi-lock me-1"></i>Aguardando Etapa 1
+                                    </span>
+                                }
+                                else if (step.CanBeReviewed)
+                                {
+                                    <a asp-controller="DataMapping" asp-action="Review"
+                                       asp-route-id="@step.Id" asp-route-runId="@Model.Id"
+                                       class="btn btn-sm btn-warning">
+                                        <i class="bi bi-clipboard-check me-1"></i>Revisar
+                                    </a>
+                                    <a asp-controller="DataMapping" asp-action="Result" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>Ver Resultado
+                                    </a>
+                                }
+                                else if (step.IsExecuted)
+                                {
+                                    <a asp-controller="DataMapping" asp-action="Result" asp-route-id="@Model.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>Ver Resultado
+                                    </a>
+                                }
+                            }
+
+                            @* Etapas 4 e 5 legadas — sem acao *@
+                            @if (step.StepNumber >= 4)
+                            {
+                                <span class="badge bg-secondary">Em breve</span>
+                            }
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(step.Notes))
+                    {
+                        <small class="text-muted d-block mt-1">@step.Notes</small>
+                    }
+                    @if (!string.IsNullOrEmpty(step.ErrorMessage))
+                    {
+                        <small class="text-danger d-block mt-1"><strong>Erro:</strong> @step.ErrorMessage</small>
+                    }
+                    @if (step.FilesFound.HasValue)
+                    {
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-files me-1"></i>
+                            @step.FilesFound encontrados · @step.FilesIgnored ignorados
+                            @if (step.ErrorCount > 0)
+                            {
+                                <span class="text-danger ms-2">· @step.ErrorCount erros</span>
+                            }
+                        </small>
+                    }
+                    @if (step.ReviewedAt.HasValue)
+                    {
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-person-check me-1"></i>
+                            Revisado por @(step.ReviewedBy ?? "anônimo") em @step.ReviewedAt.Value.ToLocalTime().ToString("dd/MM HH:mm")
+                            @if (!string.IsNullOrWhiteSpace(step.ReviewNotes))
+                            {
+                                <span class="ms-2">— @step.ReviewNotes</span>
+                            }
+                        </small>
+                    }
+                    @if (step.StartedAt.HasValue || step.FinishedAt.HasValue)
+                    {
+                        <small class="text-muted d-block mt-1">
+                            @if (step.StartedAt.HasValue)
+                            {
+                                <span>Início: @step.StartedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
+                            }
+                            @if (step.FinishedAt.HasValue)
+                            {
+                                <span class="ms-2">Fim: @step.FinishedAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
+                            }
+                        </small>
+                    }
+                </div>
+            }
+        </div>
+    }
 }
 
 @if (Model.Status != RunStatus.Completed && Model.Status != RunStatus.Cancelled)
 {
     <form asp-action="Cancel" asp-route-id="@Model.Id" method="post"
-          onsubmit="return confirm('Cancelar este run?')">
+          onsubmit="return confirm('Cancelar esta análise?')">
         @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-sm btn-outline-danger">Cancelar Run</button>
+        <button type="submit" class="btn btn-sm btn-outline-danger">Cancelar Análise</button>
     </form>
 }

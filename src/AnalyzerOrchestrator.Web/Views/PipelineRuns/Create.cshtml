@@ -1,63 +1,67 @@
 @model AnalyzerOrchestrator.Application.DTOs.PipelineRuns.CreatePipelineRunDto
 @{
     var project = ViewBag.Project as AnalyzerOrchestrator.Application.DTOs.Projects.ProjectDto;
-    ViewData["Title"] = "Novo Run";
+    ViewData["Title"] = "Nova Análise";
 }
-
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
         <li class="breadcrumb-item">
             <a asp-controller="Projects" asp-action="Details" asp-route-id="@project?.Id">@project?.Name</a>
         </li>
-        <li class="breadcrumb-item active">Novo Run</li>
+        <li class="breadcrumb-item active">Nova Análise</li>
     </ol>
 </nav>
-
-<h2 class="mb-1">Novo Pipeline Run</h2>
+<h2 class="mb-1">Nova Análise</h2>
 <p class="text-muted mb-4">Projeto: <strong>@project?.Name</strong></p>
-
 <div class="row">
     <div class="col-md-6">
         <form asp-action="Create" method="post">
             @Html.AntiForgeryToken()
             <input asp-for="ProjectId" type="hidden" />
             <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
-
             <div class="mb-3">
                 <label asp-for="Notes" class="form-label fw-semibold">Observações</label>
                 <textarea asp-for="Notes" class="form-control" rows="3"
-                          placeholder="Contexto ou objetivo desta execução..."></textarea>
+                          placeholder="Contexto ou objetivo desta análise..."></textarea>
                 <span asp-validation-for="Notes" class="text-danger small"></span>
             </div>
-
             <div class="mb-4">
                 <label asp-for="TriggerSource" class="form-label fw-semibold">Origem</label>
                 <input asp-for="TriggerSource" class="form-control" value="Manual"
                        placeholder="Ex: Manual, Agendado..." />
                 <span asp-validation-for="TriggerSource" class="text-danger small"></span>
             </div>
-
             <div class="alert alert-light border mb-4">
-                <strong>Etapas que serão criadas automaticamente:</strong>
+                <strong>Etapas desta análise:</strong>
                 <ol class="mb-0 mt-2">
-                    <li>Coleta de Informações do Projeto</li>
-                    <li>Mapeamento de Estrutura</li>
-                    <li>Análise de Dependências</li>
-                    <li>Análise de Banco de Dados <span class="badge bg-secondary">opcional</span></li>
-                    <li>Preparação do Contexto</li>
+                    <li>
+                        <strong>Extração do sistema</strong>
+                        <span class="badge bg-success ms-1">Disponível</span>
+                        <div class="text-muted small">Estrutura, arquitetura e mapeamento de dados</div>
+                    </li>
+                    <li class="mt-1">
+                        Requisito estruturado
+                        <span class="badge bg-secondary ms-1">Em breve</span>
+                    </li>
+                    <li class="mt-1">
+                        Mapa de impacto
+                        <span class="badge bg-secondary ms-1">Em breve</span>
+                    </li>
+                    <li class="mt-1">
+                        Geração do snapshot final para IA
+                        <span class="badge bg-secondary ms-1">Em breve</span>
+                    </li>
                 </ol>
             </div>
-
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Criar Run</button>
+                <button type="submit" class="btn btn-primary">Criar Análise</button>
                 <a asp-controller="Projects" asp-action="Details" asp-route-id="@project?.Id"
                    class="btn btn-outline-secondary">Cancelar</a>
             </div>
         </form>
     </div>
 </div>
-
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

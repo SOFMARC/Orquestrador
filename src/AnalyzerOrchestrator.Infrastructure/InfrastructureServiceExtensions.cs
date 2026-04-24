@@ -28,6 +28,9 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IArchitecturalConsolidationService, ArchitecturalConsolidationService>();
         services.AddScoped<IDataMappingService, DataMappingService>();
 
+        // Orquestrador da nova Etapa 1 — Extração do sistema (Workflow v2)
+        services.AddScoped<ISystemExtractionService, SystemExtractionService>();
+
         // Serviços de consulta (reutilizáveis por múltiplas etapas)
         services.AddScoped<IArtifactQueryService, ArtifactQueryService>();
 

@@ -1,13 +1,12 @@
-﻿@{
+@{
     ViewData["Title"] = "Início";
 }
-
 <div class="px-4 py-5 text-center">
     <h1 class="display-5 fw-bold">Analyzer Orchestrator</h1>
-    <div class="col-lg-6 mx-auto">
+    <div class="col-lg-7 mx-auto">
         <p class="lead mb-4">
-            Sistema local para orquestração de etapas de análise técnica de projetos,
-            preparando contexto estruturado para uso com IA.
+            Transforme projetos complexos em snapshots técnicos limpos e enxutos,
+            prontos para leitura eficiente por IA.
         </p>
         <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
             <a asp-controller="Projects" asp-action="Index" class="btn btn-primary btn-lg px-4 gap-3">
@@ -22,36 +21,86 @@
 
 <div class="container">
     <div class="row g-4 py-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm border-primary">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-primary me-2">1</span>
+                        <h6 class="card-title mb-0">Extração do sistema</h6>
+                    </div>
+                    <p class="card-text text-muted small">
+                        Consolida estrutura, arquitetura e mapeamento de dados em uma visão técnica unificada.
+                    </p>
+                    <span class="badge bg-success">Disponível</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-secondary me-2">2</span>
+                        <h6 class="card-title mb-0">Requisito estruturado</h6>
+                    </div>
+                    <p class="card-text text-muted small">
+                        Organiza a solicitação de mudança com objetivo, regras, restrições e critérios de aceite.
+                    </p>
+                    <span class="badge bg-secondary">Em breve</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-secondary me-2">3</span>
+                        <h6 class="card-title mb-0">Mapa de impacto</h6>
+                    </div>
+                    <p class="card-text text-muted small">
+                        Identifica onde mexer, o que pode quebrar e o que não deve ser alterado.
+                    </p>
+                    <span class="badge bg-secondary">Em breve</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-secondary me-2">4</span>
+                        <h6 class="card-title mb-0">Snapshot final para IA</h6>
+                    </div>
+                    <p class="card-text text-muted small">
+                        Gera o arquivo final enxuto com apenas o contexto necessário para a IA.
+                    </p>
+                    <span class="badge bg-secondary">Em breve</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 py-2 pb-4">
+        <div class="col-md-6">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">Projetos</h5>
                     <p class="card-text text-muted">
-                        Cadastre e gerencie os projetos que serão analisados pelo orquestrador.
+                        Cadastre e gerencie os projetos que serão analisados.
+                        Cada projeto armazena o caminho do repositório e as configurações de leitura.
                     </p>
                     <a asp-controller="Projects" asp-action="Index" class="btn btn-sm btn-outline-primary">Acessar</a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">Pipeline Runs</h5>
+                    <h5 class="card-title">Análises (Runs)</h5>
                     <p class="card-text text-muted">
-                        Crie e acompanhe execuções do pipeline de análise para cada projeto.
+                        Crie e acompanhe execuções de análise para cada projeto.
+                        Cada run percorre as etapas do produto e gera os artefatos correspondentes.
                     </p>
                     <a asp-controller="Projects" asp-action="Index" class="btn btn-sm btn-outline-primary">Acessar via Projeto</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Workflow</h5>
-                    <p class="card-text text-muted">
-                        Cada run executa etapas estruturadas: coleta, mapeamento, análise e preparação de contexto.
-                    </p>
-                    <span class="badge bg-secondary">Etapas automáticas</span>
                 </div>
             </div>
         </div>

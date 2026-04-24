@@ -1,0 +1,430 @@
+@using AnalyzerOrchestrator.Application.DTOs.PipelineRuns
+@using AnalyzerOrchestrator.Domain.Enums
+@model AnalyzerOrchestrator.Application.DTOs.SystemExtraction.SystemExtractionResultDto
+@{
+    ViewData["Title"] = "Resultado — Etapa 1 — Extração do sistema";
+    var run = ViewBag.Run as PipelineRunDto;
+    var step = ViewBag.Step as PipelineStepExecutionDto;
+}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index">Projetos</a></li>
+        <li class="breadcrumb-item">
+            <a asp-controller="Projects" asp-action="Details" asp-route-id="@run?.ProjectId">@run?.ProjectName</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a asp-controller="PipelineRuns" asp-action="Details" asp-route-id="@run?.Id">Análise #@run?.Id</a>
+        </li>
+        <li class="breadcrumb-item active">Extração do sistema</li>
+    </ol>
+</nav>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Info"] != null)
+{
+    <div class="alert alert-info alert-dismissible fade show">
+        <i class="bi bi-info-circle me-2"></i>@TempData["Info"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-search me-2"></i>Etapa 1 — Extração do sistema</h2>
+    @if (step is not null)
+    {
+        <span class="badge fs-6
+            @(step.Status == StepStatus.Approved ? "bg-success" :
+              step.Status == StepStatus.AwaitingReview ? "bg-warning text-dark" :
+              step.Status == StepStatus.Rejected ? "bg-danger" :
+              step.Status == StepStatus.Failed ? "bg-danger" :
+              step.Status == StepStatus.Running ? "bg-info" : "bg-secondary")">
+            @step.StatusLabel
+        </span>
+    }
+</div>
+
+@if (Model is null)
+{
+    <div class="alert alert-secondary">
+        <i class="bi bi-hourglass me-2"></i>
+        A Etapa 1 ainda não foi executada para esta análise.
+    </div>
+    <a asp-action="ExecuteSystem" asp-route-id="@run?.Id" class="btn btn-primary">
+        <i class="bi bi-play-fill me-1"></i> Executar Extração do Sistema
+    </a>
+}
+else
+{
+    @* Painel de métricas resumidas *@
+    <div class="row g-3 mb-4">
+        <div class="col-md-2 col-sm-4">
+            <div class="card text-center border-primary">
+                <div class="card-body py-2">
+                    <div class="fs-3 fw-bold text-primary">@Model.FilesFound</div>
+                    <div class="small text-muted">Arquivos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4">
+            <div class="card text-center border-success">
+                <div class="card-body py-2">
+                    <div class="fs-3 fw-bold text-success">@Model.RelevantFilesCount</div>
+                    <div class="small text-muted">Relevantes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4">
+            <div class="card text-center border-info">
+                <div class="card-body py-2">
+                    <div class="fs-3 fw-bold text-info">@Model.ModulesCount</div>
+                    <div class="small text-muted">Módulos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4">
+            <div class="card text-center border-secondary">
+                <div class="card-body py-2">
+                    <div class="fs-3 fw-bold text-secondary">@Model.LayersCount</div>
+                    <div class="small text-muted">Camadas</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4">
+            <div class="card text-center border-warning">
+                <div class="card-body py-2">
+                    <div class="fs-3 fw-bold text-warning">@Model.CentralFilesCount</div>
+                    <div class="small text-muted">Centrais</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4">
+            <div class="card text-center border-danger">
+                <div class="card-body py-2">
+                    <div class="fs-3 fw-bold text-danger">@Model.TablesCount</div>
+                    <div class="small text-muted">Tabelas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Abas de detalhes por subetapa *@
+    <ul class="nav nav-tabs mb-3" id="extractionTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-structure" data-bs-toggle="tab"
+                    data-bs-target="#pane-structure" type="button" role="tab">
+                <i class="bi bi-folder2-open me-1"></i>1.1 Estrutura
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-arch" data-bs-toggle="tab"
+                    data-bs-target="#pane-arch" type="button" role="tab">
+                <i class="bi bi-diagram-3 me-1"></i>1.2 Arquitetura
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-data" data-bs-toggle="tab"
+                    data-bs-target="#pane-data" type="button" role="tab">
+                <i class="bi bi-table me-1"></i>1.3 Dados
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="extractionTabsContent">
+
+        @* Aba 1.1 — Estrutura *@
+        <div class="tab-pane fade show active" id="pane-structure" role="tabpanel">
+            @if (Model.Extraction is not null && Model.Extraction.Success)
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header fw-semibold">
+                                <i class="bi bi-bar-chart me-1"></i>Resumo da Varredura
+                            </div>
+                            <div class="card-body">
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-6">Arquivos encontrados</dt>
+                                    <dd class="col-sm-6">@Model.Extraction.FilesFound</dd>
+                                    <dt class="col-sm-6">Arquivos relevantes</dt>
+                                    <dd class="col-sm-6">@Model.Extraction.RelevantFilesCount</dd>
+                                    <dt class="col-sm-6">Arquivos ignorados</dt>
+                                    <dd class="col-sm-6">@Model.Extraction.FilesIgnored</dd>
+                                    <dt class="col-sm-6">Erros de acesso</dt>
+                                    <dd class="col-sm-6">@Model.Extraction.ErrorCount</dd>
+                                    <dt class="col-sm-6">Duração</dt>
+                                    <dd class="col-sm-6">@Model.Extraction.Duration.ToString(@"mm\:ss")</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header fw-semibold">
+                                <i class="bi bi-file-earmark-text me-1"></i>Artefatos Gerados
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    @if (!string.IsNullOrEmpty(Model.Extraction.InventoryFilePath))
+                                    {
+                                        <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i>inventory.json</li>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Extraction.TreeFilePath))
+                                    {
+                                        <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i>tree.txt</li>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Extraction.RelevantFilesPath))
+                                    {
+                                        <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i>relevant-files.json</li>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Extraction.SummaryFilePath))
+                                    {
+                                        <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i>summary.md</li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Extraction.StructureTree))
+                {
+                    <div class="card">
+                        <div class="card-header fw-semibold">
+                            <i class="bi bi-diagram-3 me-1"></i>Árvore Estrutural
+                        </div>
+                        <div class="card-body p-0">
+                            <pre class="p-3 mb-0 small" style="max-height:400px;overflow-y:auto;background:#f8f9fa;">@Model.Extraction.StructureTree</pre>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Subetapa 1.1 não concluída.
+                    @if (!string.IsNullOrWhiteSpace(Model.Extraction?.ErrorMessage))
+                    {
+                        <span>Erro: @Model.Extraction.ErrorMessage</span>
+                    }
+                </div>
+            }
+        </div>
+
+        @* Aba 1.2 — Arquitetura *@
+        <div class="tab-pane fade" id="pane-arch" role="tabpanel">
+            @if (Model.Consolidation is not null && Model.Consolidation.Success)
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header fw-semibold">
+                                <i class="bi bi-boxes me-1"></i>Módulos (@Model.Consolidation.ModulesCount)
+                            </div>
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var mod in Model.Consolidation.Modules.Take(20))
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                                            <span class="small">@mod.Name</span>
+                                            <span class="badge bg-light text-dark border">@mod.FileCount arq.</span>
+                                        </li>
+                                    }
+                                    @if (Model.Consolidation.Modules.Count > 20)
+                                    {
+                                        <li class="list-group-item text-muted small">+ @(Model.Consolidation.Modules.Count - 20) módulos...</li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header fw-semibold">
+                                <i class="bi bi-layers me-1"></i>Camadas (@Model.Consolidation.LayersCount)
+                            </div>
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var layer in Model.Consolidation.Layers)
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                                            <span class="small">@layer.Name</span>
+                                            <span class="badge bg-light text-dark border">@layer.FileCount arq.</span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header fw-semibold">
+                                <i class="bi bi-star me-1"></i>Arquivos Centrais (@Model.Consolidation.CentralFilesCount)
+                            </div>
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var cf in Model.Consolidation.CentralFiles.Take(15))
+                                    {
+                                        <li class="list-group-item py-1">
+                                            <span class="small font-monospace">@cf.FileName</span>
+                                        </li>
+                                    }
+                                    @if (Model.Consolidation.CentralFiles.Count > 15)
+                                    {
+                                        <li class="list-group-item text-muted small">+ @(Model.Consolidation.CentralFiles.Count - 15) arquivos...</li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Consolidation.ArchitectureSummaryContent))
+                {
+                    <div class="card">
+                        <div class="card-header fw-semibold">
+                            <i class="bi bi-file-earmark-text me-1"></i>Resumo Arquitetural
+                        </div>
+                        <div class="card-body p-0">
+                            <pre class="p-3 mb-0 small" style="max-height:350px;overflow-y:auto;background:#f8f9fa;">@Model.Consolidation.ArchitectureSummaryContent</pre>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Subetapa 1.2 não concluída.
+                    @if (!string.IsNullOrWhiteSpace(Model.Consolidation?.ErrorMessage))
+                    {
+                        <span>Erro: @Model.Consolidation.ErrorMessage</span>
+                    }
+                </div>
+            }
+        </div>
+
+        @* Aba 1.3 — Dados *@
+        <div class="tab-pane fade" id="pane-data" role="tabpanel">
+            @if (Model.DataMapping is not null && Model.DataMapping.Success)
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body py-2">
+                                <div class="fs-3 fw-bold text-danger">@Model.DataMapping.TablesCount</div>
+                                <div class="small text-muted">Tabelas detectadas</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body py-2">
+                                <div class="fs-3 fw-bold text-secondary">@Model.DataMapping.FilesAnalyzed</div>
+                                <div class="small text-muted">Arquivos analisados</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body py-2">
+                                <div class="fs-3 fw-bold text-info">@Model.DataMapping.RelationsCount</div>
+                                <div class="small text-muted">Relações detectadas</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @if (Model.DataMapping.Tables.Any())
+                {
+                    <div class="card">
+                        <div class="card-header fw-semibold">
+                            <i class="bi bi-table me-1"></i>Tabelas Detectadas
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tabela</th>
+                                            <th>Arquivos</th>
+                                            <th>Confiança</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var table in Model.DataMapping.Tables.Take(50))
+                                        {
+                                            <tr>
+                                                <td class="font-monospace small">@table.TableName</td>
+                                                <td class="small">@table.FileCount</td>
+                                                <td>
+                                                    <span class="badge bg-@table.ConfidenceBadgeClass">
+                                                        @table.ConfidenceLabel (@table.ConfidenceScore%)
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.DataMapping.SummaryContent))
+                {
+                    <div class="card mt-3">
+                        <div class="card-header fw-semibold">
+                            <i class="bi bi-file-earmark-text me-1"></i>Resumo do Mapeamento
+                        </div>
+                        <div class="card-body p-0">
+                            <pre class="p-3 mb-0 small" style="max-height:300px;overflow-y:auto;background:#f8f9fa;">@Model.DataMapping.SummaryContent</pre>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Subetapa 1.3 não concluída.
+                    @if (!string.IsNullOrWhiteSpace(Model.DataMapping?.ErrorMessage))
+                    {
+                        <span>Erro: @Model.DataMapping.ErrorMessage</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Ações *@
+    <div class="d-flex gap-2 mt-4">
+        @if (step?.CanBeReviewed == true)
+        {
+            <a asp-action="ReviewSystem" asp-route-id="@step.Id"
+               asp-route-runId="@run?.Id"
+               class="btn btn-warning">
+                <i class="bi bi-clipboard-check me-1"></i> Revisar Etapa 1
+            </a>
+        }
+        @if (step?.CanBeExecuted == true)
+        {
+            <a asp-action="ExecuteSystem" asp-route-id="@run?.Id" class="btn btn-primary">
+                <i class="bi bi-play-fill me-1"></i> Executar
+            </a>
+        }
+        <a asp-controller="PipelineRuns" asp-action="Details" asp-route-id="@run?.Id"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar à Análise
+        </a>
+    </div>
+}
